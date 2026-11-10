@@ -1,0 +1,34 @@
+# --- Virtual environments (recreate from pyproject.toml) ---
+.venv/
+venv/
+
+# --- Python bytecode & build artifacts ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# --- Test & tool caches ---
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# --- Secrets: NEVER commit API keys ---
+.env
+.env.*
+!.env.example
+
+# --- Generated run outputs (benchmark results, SQLite databases) ---
+results/
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Editor / OS files ---
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

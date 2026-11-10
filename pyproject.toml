@@ -1,0 +1,42 @@
+# ---------------------------------------------------------------------------
+# pyproject.toml — the single configuration file for this Python project.
+# It tells tools (pip, setuptools, pytest) how to build, install and test it.
+# ---------------------------------------------------------------------------
+
+# How to BUILD the package. pip reads this first and installs setuptools
+# temporarily to turn our source code into an installable package.
+[build-system]
+requires = ["setuptools>=77"]      # 77+ understands the SPDX `license` string below
+build-backend = "setuptools.build_meta"
+
+# Project METADATA (standard format, PEP 621).
+[project]
+name = "agentbench-lite"            # distribution name: what you `pip install`
+dynamic = ["version"]               # version is read from the code (see below)
+description = "A modular framework for running, tracing, evaluating and analyzing LLM-powered AI agents."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"                     # SPDX identifier (standard license name)
+license-files = ["LICENSE"]         # file containing the full license text
+authors = [{ name = "Murariji Dubey" }]
+dependencies = []                   # runtime dependencies: none yet, on purpose
+
+# Optional dependency groups. `pip install -e ".[dev]"` installs these too.
+# Tools needed only for development/testing go here, not in `dependencies`.
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
+# Tell setuptools our code lives in src/ (the "src layout").
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Single source of truth for the version: agentbench/__init__.py
+[tool.setuptools.dynamic]
+version = { attr = "agentbench.__version__" }
+
+# pytest settings (pytest reads them from here; no separate pytest.ini needed).
+[tool.pytest.ini_options]
+testpaths = ["tests"]               # only look for tests in tests/
+addopts = "-ra"                     # print a short summary of skipped/failed tests
