@@ -7,14 +7,14 @@ A modular Python framework to **run** LLM agents on tasks with tools, **trace** 
 **evaluate** task completion, and **analyze** failures.
 
 ## Current state
-**Phase 0 — Project skeleton: verification done, commit/push pending.**
+**Phase 0 — Project skeleton: ✅ complete** (commit `beba908`, pushed to `origin/main`).
 - Files: `pyproject.toml`, `.gitignore`, `README.md`, `LICENSE` (MIT), `docs/architecture.md`,
   `docs/decisions/0001-provider-independent-llm.md`, `src/agentbench/__init__.py`, `tests/test_smoke.py`.
 - Environment: Python 3.12.8 in `.venv`; `agentbench-lite 0.1.0` installed editable; pytest 9.2.0.
 - Tests: **2 passed** (`tests/test_smoke.py`).
 - Fixed: setuptools license deprecation warning → SPDX `license = "MIT"` + `license-files`
   (requires setuptools>=77). Verified: reinstall clean, 2 passed, `License-Expression: MIT`.
-- GitHub repo `Murariji/AgentBench-Lite`: empty; local folder not yet a git repo.
+- Git: `main` tracks `origin/main` on GitHub. Study notes: `docs/learning/phase-0-notes.md`.
 - Docker not installed (not needed until Phase 9).
 
 ## Key decisions
@@ -33,7 +33,7 @@ A modular Python framework to **run** LLM agents on tasks with tools, **trace** 
 - Verify with tests before a milestone is done; update this file after each milestone.
 
 ## Roadmap
-- [ ] **Phase 0** — Project skeleton, venv, pytest, first commit & push
+- [x] **Phase 0** — Project skeleton, venv, pytest, first commit & push
 - [ ] **Phase 1** — Core data models (Pydantic): `Task`, `ToolCall`, `Step`, `Trace`, `RunResult`
 - [ ] **Phase 2** — Tools: `Tool` base + registry; 2–3 simple tools
 - [ ] **Phase 3** — LLM layer: `LLMClient`, `FakeLLM`, `GeminiClient`
@@ -45,4 +45,4 @@ A modular Python framework to **run** LLM agents on tasks with tools, **trace** 
 - [ ] **Phase 9** — FastAPI service + Docker
 
 ## Next step
-Initial commit and push to GitHub.
+Phase 1 — core data models (Pydantic). Waiting for user approval to start.
