@@ -1,7 +1,7 @@
 # Architecture (planned)
 
-> This describes the **intended** design. Nothing below is implemented yet except the
-> package skeleton. Update this file whenever the design changes.
+> This describes the **intended** design. Implemented so far: the package skeleton and
+> **Models** (`src/agentbench/models.py`). Update this file whenever the design changes.
 
 ## The core loop
 
@@ -20,7 +20,7 @@ Trace ──► Evaluator (did it succeed?) ──► Analyzer (why did it fail?
 
 | Component | Responsibility | Depends on |
 |---|---|---|
-| Models | Pydantic data types: `Task`, `ToolCall`, `Step`, `Trace`, `RunResult` | — |
+| Models ✅ | Pydantic data types: `Task`, `ToolCall`, `Step`, `Trace`, `RunResult` | — |
 | Tools | `Tool` base class + registry of callable tools | Models |
 | LLM layer | `LLMClient` interface; `FakeLLM` for tests, `GeminiClient` first real provider | Models |
 | Runner | The agent loop, step limit, error handling, trace recording | Models, Tools, LLM |

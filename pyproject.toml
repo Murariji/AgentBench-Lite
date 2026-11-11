@@ -19,7 +19,9 @@ requires-python = ">=3.11"
 license = "MIT"                     # SPDX identifier (standard license name)
 license-files = ["LICENSE"]         # file containing the full license text
 authors = [{ name = "Murariji Dubey" }]
-dependencies = []                   # runtime dependencies: none yet, on purpose
+dependencies = [                    # runtime dependencies: installed with the package
+    "pydantic>=2",                  # data models + validation (Phase 1)
+]
 
 # Optional dependency groups. `pip install -e ".[dev]"` installs these too.
 # Tools needed only for development/testing go here, not in `dependencies`.
