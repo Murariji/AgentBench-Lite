@@ -3,7 +3,7 @@
 **An AI Agent Evaluation & Reliability Framework** — run LLM-powered agents on tasks,
 record every step, measure performance and analyze why they fail.
 
-> **Status: early development.** Project skeleton and core data models exist today.
+> **Status: early development.** Project skeleton, core data models and tools exist today.
 > Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
 
 ## What it will do
@@ -25,6 +25,8 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 - ✅ pytest setup with a smoke test verifying the installed package imports
 - ✅ Core data models (Pydantic) in `agentbench.models`: `Task`, `ToolCall`, `Step`, `Trace`, `RunResult`
   — validated on creation, JSON round-trip tested
+- ✅ Tools (`agentbench.tools`): `Tool` base class, crash-proof `ToolRegistry`, and built-in
+  `calculator` (safe, no `eval`), `word_count`, `lookup`
 
 ## Tech stack
 

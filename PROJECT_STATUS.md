@@ -7,6 +7,12 @@ A modular Python framework to **run** LLM agents on tasks with tools, **trace** 
 **evaluate** task completion, and **analyze** failures.
 
 ## Current state
+**Phase 2 — Tools: ✅ complete** (user-reported: 37 passed).
+- `src/agentbench/tools/`: `base.py` (`Tool` ABC, `ToolError`), `registry.py` (`ToolRegistry`),
+  `builtin.py` (`calculator`, `word_count`, `lookup`). Tests: `tests/test_tools.py` (23).
+- `ToolRegistry.execute()` never raises: returns `ToolCall` with `output` or `error`.
+- Notes: `docs/learning/phase-2-notes.md`. No new dependencies.
+
 **Phase 1 — Core data models: ✅ complete** (user-reported: 14 passed).
 - `pyproject.toml`: first runtime dependency `pydantic>=2`.
 - `src/agentbench/models.py`: `Task`, `ToolCall`, `Step`, `Trace`, `RunResult` (+ `RunStatus` Literal).
@@ -34,10 +40,12 @@ A modular Python framework to **run** LLM agents on tasks with tools, **trace** 
 | Real LLM | Google Gemini free tier first; Ollama/Groq later | Free; user preference |
 | Tests | `FakeLLM` (scripted replies) | Free, deterministic, offline |
 | Models | Pydantic v2, `extra="forbid"` | Validation + JSON for free; typos caught |
+| Tool failures | Captured in `ToolCall.error`, never raised | Agent can retry; data for Phase 8 |
+| Calculator | AST walk, no `eval()` | Security; exponent capped at 100 |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
-- Claude writes files and explains them; user runs commands and manages git.
+- Every file is explained as it is written; commands and git are run manually.
 - Minimal implementation; no unnecessary dependencies.
 - README separates ✅ Implemented from 🗓️ Planned.
 - Verify with tests before a milestone is done; update this file after each milestone.
@@ -45,7 +53,7 @@ A modular Python framework to **run** LLM agents on tasks with tools, **trace** 
 ## Roadmap
 - [x] **Phase 0** — Project skeleton, venv, pytest, first commit & push
 - [x] **Phase 1** — Core data models (Pydantic): `Task`, `ToolCall`, `Step`, `Trace`, `RunResult`
-- [ ] **Phase 2** — Tools: `Tool` base + registry; 2–3 simple tools
+- [x] **Phase 2** — Tools: `Tool` base + registry; 2–3 simple tools
 - [ ] **Phase 3** — LLM layer: `LLMClient`, `FakeLLM`, `GeminiClient`
 - [ ] **Phase 4** — Agent runner: ReAct-style loop, step limit, error handling, tracing
 - [ ] **Phase 5** — Evaluators: exact-match, contains, tool-usage; later LLM-as-judge
@@ -55,4 +63,4 @@ A modular Python framework to **run** LLM agents on tasks with tools, **trace** 
 - [ ] **Phase 9** — FastAPI service + Docker
 
 ## Next step
-Phase 2 — Tools: `Tool` base + registry; 2–3 simple tools. Waiting for user approval to start.
+Phase 3 — LLM layer: `LLMClient` interface, `FakeLLM`, `GeminiClient`. Waiting for user approval to start.
