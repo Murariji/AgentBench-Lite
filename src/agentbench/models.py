@@ -12,6 +12,7 @@ All models are Pydantic models, so they:
   * convert to/from JSON with ``model_dump_json()`` / ``model_validate_json()``
 """
 
+import hashlib
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -24,6 +25,8 @@ RunStatus = Literal["completed", "max_steps", "error"]
 
 # How a task's final answer is graded (see agentbench/evaluators.py).
 AnswerType = Literal["exact", "contains", "number"]
+
+Difficulty = Literal["easy", "medium", "hard"]
 
 
 def _utc_now() -> datetime:
@@ -59,6 +62,7 @@ class Task(_BaseModel):
         description="None = all registered tools; [] = no tools; a list = only those tools.",
     )
     max_steps: int = Field(default=10, gt=0, description="Safety limit for the agent loop.")
+    difficulty: Difficulty | None = None  # for per-difficulty pass rates
     # ---- grading rules (used by evaluators, never by the runner) ----
     answer_type: AnswerType = Field(default="exact", description="How the answer is graded.")
     abs_tolerance: float = Field(default=0.0, ge=0, description="number only: allowed absolute difference.")
@@ -151,3 +155,101 @@ class EvaluationResult(_BaseModel):
         if self.passed != all(check.passed for check in self.checks):
             raise ValueError("'passed' must be True exactly when every check passed")
         return self
+
+
+# ---------- benchmark runs (Phase 6) -------------------------------------------
+
+# run.error_kind values that are NOT the agent's fault. Such runs are not evaluated and
+# do not count toward the pass rate. ("invalid_response" = the model returned an unusable
+# reply, and "max_steps" = the agent ran out of steps: both ARE agent results.)
+INFRA_ERROR_KINDS: frozenset[str] = frozenset(
+    {"auth", "quota_exhausted", "rate_limit", "server", "network", "bad_request", "config", "unknown"}
+)
+
+
+def is_infra_error(run: "RunResult") -> bool:
+    return run.status == "error" and run.error_kind in INFRA_ERROR_KINDS
+
+
+class AgentConfig(_BaseModel):
+    """One agent setup, described as data, so runs can be compared and reproduced."""
+
+    name: str = Field(min_length=1)                 # e.g. "flash-lite-default"
+    provider: Literal["fake", "gemini"]             # "fake" = scripted, NOT a real AI
+    model: str = Field(min_length=1)                # actual model id, e.g. "gemini-3.5-flash-lite"
+    system_prompt: str
+    max_attempts: int = Field(default=3, ge=1)      # LLM retries (see RetryPolicy)
+    min_interval_seconds: float = Field(default=0.0, ge=0)  # pacing between requests (Step 6.3)
+    prompt_hash: str = ""                           # filled in automatically, see below
+
+    @model_validator(mode="after")
+    def _fill_prompt_hash(self) -> "AgentConfig":
+        # A short fingerprint of the system prompt: two configs with the same hash used
+        # exactly the same prompt, without storing/comparing long texts by eye.
+        self.prompt_hash = hashlib.sha256(self.system_prompt.encode("utf-8")).hexdigest()[:12]
+        return self
+
+    @property
+    def is_scripted(self) -> bool:
+        return self.provider == "fake"
+
+
+RunOutcome = Literal["passed", "failed", "infra_error"]
+
+
+class RunRecord(_BaseModel):
+    """One scheduled run of one task: what happened (run) and the verdict (evaluation)."""
+
+    task_id: str = Field(min_length=1)
+    repeat: int = Field(ge=0)                     # 0, 1, 2 ... when a task is repeated
+    difficulty: Difficulty | None = None
+    run: RunResult
+    evaluation: EvaluationResult | None = None    # None ONLY for infrastructure errors
+    outcome: RunOutcome
+
+    @model_validator(mode="after")
+    def _consistent(self) -> "RunRecord":
+        if self.run.task_id != self.task_id:
+            raise ValueError("run.task_id must match task_id")
+        if self.outcome == "infra_error":
+            if not is_infra_error(self.run) or self.evaluation is not None:
+                raise ValueError("infra_error records need an infrastructure error and no evaluation")
+        else:
+            if self.evaluation is None or self.evaluation.run_id != self.run.run_id:
+                raise ValueError("passed/failed records need the evaluation of this run")
+            if (self.outcome == "passed") != self.evaluation.passed:
+                raise ValueError("outcome must agree with evaluation.passed")
+        return self
+
+
+class SkippedRun(_BaseModel):
+    """A scheduled run that never happened (e.g. the suite was stopped)."""
+
+    task_id: str = Field(min_length=1)
+    repeat: int = Field(ge=0)
+    reason: str = Field(min_length=1)
+
+
+class SuiteResult(_BaseModel):
+    """Everything about one suite run. Nothing is discarded: every scheduled run is
+    either a record (passed / failed / infra_error) or a skipped entry."""
+
+    suite_name: str = Field(min_length=1)
+    config: AgentConfig
+    task_ids: list[str] = Field(min_length=1)   # the scheduled tasks, in order
+    repeats: int = Field(default=1, ge=1)
+    started_at: datetime = Field(default_factory=_utc_now)
+    finished_at: datetime | None = None
+    records: list[RunRecord] = Field(default_factory=list)
+    skipped: list[SkippedRun] = Field(default_factory=list)
+
+    @property
+    def scheduled_runs(self) -> int:
+        return len(self.task_ids) * self.repeats
+
+    @property
+    def is_complete(self) -> bool:
+        """Complete = every scheduled run was executed AND evaluated (no infra errors, nothing skipped)."""
+        return (not self.skipped
+                and len(self.records) == self.scheduled_runs
+                and all(r.outcome != "infra_error" for r in self.records))

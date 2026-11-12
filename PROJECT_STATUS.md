@@ -15,7 +15,22 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 6 — Step 6.1 Suite runner + metrics: ✅ complete.** Tests: **248 passed** (user-reported; 20 new).
+- `src/agentbench/benchmark.py`: `run_suite(tasks, config, make_llm, tools, suite_name=, repeats=)` —
+  sequential, injected LLM factory `(task, repeat) -> LLMClient`, progress lines, every run kept.
+- `src/agentbench/metrics.py`: `compute_metrics(suite) -> SuiteMetrics` — pass rate as passed/eligible
+  (denominator always shown), by difficulty, averages over eligible runs, totals over all executed runs,
+  tool calls/errors, most-failed checks, pass@k / pass^k (empirical, only tasks whose k repeats were all
+  eligible). Tokens `None` when the provider reports none.
+- Models: `Task.difficulty`; `AgentConfig` (provider fake|gemini, model, system_prompt, max_attempts,
+  min_interval_seconds, auto `prompt_hash`); `RunRecord` (outcome passed|failed|infra_error, validated);
+  `SkippedRun`; `SuiteResult` (`is_complete` = all scheduled runs executed and evaluated).
+- Infrastructure error kinds (not agent failures): auth, quota_exhausted, rate_limit, server, network,
+  bad_request, config, unknown. `invalid_response` and `max_steps` count as agent results.
+- Shop tasks: explicit difficulty (2 easy, 4 medium, 4 hard).
+
 **Phase 5 — Evaluators + Data Analyst benchmark: ✅ complete** (Steps 5.1, 5.2, 5.3).
+
 
 **Step 5.3 Shop benchmark suite: ✅ complete.** Tests: **228 passed** (user-reported; 37 new).
 - `src/agentbench/suites/shop.py`: `SHOP_TASKS` (10 tasks: 2 easy, 4 medium, 4 hard), `get_task()`,
@@ -153,6 +168,8 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 | Dataset | Generated from a fixed seed, built on demand, never committed | Same answers everywhere; no binary files in git |
 | Answer key | Proven by independent reference SQL + tie checks in tests | A wrong key makes every score a lie |
 | Benchmark data | Private generated DB | No contamination: answers exist nowhere online |
+| Pass rate | passed / eligible; infra errors and skipped runs reported separately | An agent isn't failed for Google's quota |
+| Suite execution | Sequential, LLM injected per run | Free-tier limits; scripted and real agents share one runner |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
@@ -181,6 +198,7 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 6 — Benchmark runner: run a whole suite, pass rate and metrics (steps, tokens, latency, LLM calls,
-failure reasons), pacing between requests for free-tier per-minute limits, an `AgentConfig` for
-comparing configurations. A full shop suite run with Gemini ≈ 40–60 requests. Waiting for user approval.
+Phase 6, Step 6.2 — scripted careful (10/10) and sloppy (falls into 4 traps → 6/10) shop agents,
+text report, side-by-side comparison listing which config dimensions changed, JSON export to
+`results/`, reports labelled SCRIPTED vs REAL LLM. Then 6.3 (pacing, budget, circuit breaker,
+`--yes`). Waiting for user approval.

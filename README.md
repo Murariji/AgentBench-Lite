@@ -43,6 +43,9 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
   allowlist authorizer, size and time limits) — see [SQL tool safety](#sql-tool-safety)
 - ✅ Shop Data Analyst benchmark (`agentbench.suites`): 10 tasks (COUNT → LEFT JOIN traps →
   multi-table revenue → percentages); every expected answer proven by independent reference SQL
+- ✅ Suite runner + metrics (`agentbench.benchmark`, `agentbench.metrics`): run a suite with repeats,
+  pass rate over eligible runs, by difficulty, steps / LLM calls / tokens / time, tool errors,
+  most-failed checks, pass@k and pass^k
 
 ## Try the benchmark (free, no API key)
 
@@ -55,6 +58,18 @@ python scripts/run_shop_task.py --gemini shop-004   # real Gemini (free tier, ~5
 Each run prints the execution trace (every SQL query and its result) and the evaluation (every
 check with its reason). The `--mistake` run shows why execution and evaluation are separate: the
 agent finished and used the right tool, but its answer was wrong.
+
+## Benchmark metrics
+
+| Metric | Meaning |
+|---|---|
+| Pass rate | `passed / eligible` — always shown with its denominator, e.g. `5/7 (71.4%)` |
+| Eligible run | A run that produced an agent result (finished, hit the step limit, or gave an unusable reply) |
+| Infrastructure error | Quota, auth, network, server or configuration failure — **not** the agent's fault, not counted as a failure; the suite is marked **incomplete** |
+| Averages | Steps, LLM calls, tokens, duration over eligible runs |
+| Totals | LLM calls and duration over all executed runs (that's what quota and time cost) |
+| pass@k | With k repeats: share of tasks where **at least one** repeat passed — "can the agent solve it?" |
+| pass^k | Share of tasks where **all** k repeats passed — "can I rely on it?" |
 
 ## Evaluation limitations
 
