@@ -3,6 +3,35 @@
 > This describes the **intended** design. Implemented so far: the package skeleton and
 > **Models** (`src/agentbench/models.py`) and **Tools** (`src/agentbench/tools/`). Update this file whenever the design changes.
 
+## Platform layers
+
+```
+┌────────────────────────────────────────────┐
+│ Dashboard (React + TypeScript)  — Phase 10  │  displays only, no agent logic
+└──────────────────────┬─────────────────────┘
+                       │ HTTP + JSON (REST)
+┌──────────────────────▼─────────────────────┐
+│ API (FastAPI)  — Phase 9                    │  thin layer: request → framework → JSON
+└───────────┬──────────────────────┬─────────┘
+            │ Python calls         │ save / load
+┌───────────▼──────────────┐  ┌────▼─────────────┐
+│ Framework (pure Python)  │─►│ SQLite — Phase 7  │
+│ models, tools, LLM,      │  │ tasks, runs,      │
+│ runner, evaluators, ...  │  │ traces, results   │
+└───────────┬──────────────┘  └──────────────────┘
+            │ HTTPS
+      ┌─────▼─────┐
+      │ Gemini API │
+      └───────────┘
+```
+
+**Rules**
+- The framework works on its own (importable Python); API and dashboard are optional layers on top.
+- The dashboard talks only to the API — never to the database or the framework directly.
+- Pydantic models are the shared data shapes: the API returns them as JSON to the dashboard.
+- Long benchmark runs: `POST /runs` returns a `run_id` immediately; the dashboard polls
+  `GET /runs/{run_id}` until the run is finished.
+
 ## The core loop
 
 ```
@@ -27,7 +56,9 @@ Trace ──► Evaluator (did it succeed?) ──► Analyzer (why did it fail?
 | Evaluators | Score a `RunResult` against the task's expected outcome | Models |
 | Analyzer | Classify failures from traces | Models |
 | Storage | Persist runs and traces in SQLite | Models |
-| API | FastAPI service exposing runs and results | All |
+| Benchmark runner | Run task suites with an `AgentConfig`; metrics; compare configs | Runner, Evaluators |
+| API | FastAPI REST service exposing tasks, runs, traces and metrics | Framework, Storage |
+| Dashboard | React + TypeScript UI: tasks, runs, trace viewer, charts | API only |
 
 ## Design principles
 

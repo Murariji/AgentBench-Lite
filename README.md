@@ -1,7 +1,7 @@
 # AgentBench-Lite
 
-**An AI Agent Evaluation & Reliability Framework** — run LLM-powered agents on tasks,
-record every step, measure performance and analyze why they fail.
+**An AI Agent Evaluation & Reliability Platform** — run LLM-powered agents on tasks,
+record every step, measure performance, analyze why they fail, and view it all in a dashboard.
 
 > **Status: early development.** Project skeleton, core data models and tools exist today.
 > Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
@@ -18,6 +18,9 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **Evaluator** | Decide whether the task was completed correctly | 🗓️ Planned |
 | **Analyzer** | Categorize failures (wrong tool, bad arguments, loops, wrong answer) | 🗓️ Planned |
 | **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | 🗓️ Planned |
+| **Benchmarks** | Run task suites, compute metrics, compare agent configurations | 🗓️ Planned |
+| **API** | FastAPI REST backend with SQLite storage | 🗓️ Planned |
+| **Dashboard** | React + TypeScript UI for runs, traces and charts | 🗓️ Planned |
 
 ## Implemented so far
 
@@ -33,7 +36,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 - Python 3.11+
 - Pydantic v2 (data models & validation)
 - pytest (testing)
-- Planned: asyncio, SQLite, FastAPI, Docker
+- Planned: SQLite, FastAPI, React + TypeScript + Tailwind CSS + Recharts, Docker
 
 ## Getting started
 

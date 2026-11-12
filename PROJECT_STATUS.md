@@ -1,10 +1,18 @@
 # AgentBench-Lite — Project Status
 
-_Last updated: 2026-11-11_
+_Last updated: 2026-11-12_
 
 ## Goal
-A modular Python framework to **run** LLM agents on tasks with tools, **trace** every step,
-**evaluate** task completion, and **analyze** failures.
+An **AI Agent Evaluation & Reliability Platform** with three layers:
+1. **Python framework** — run tool-using LLM agents on tasks, trace every step, evaluate
+   results, compute metrics (success rate, latency, tokens, tool usage, failures), compare
+   agent configurations, and analyze failure patterns. Works on its own, without the API or UI.
+2. **FastAPI backend + SQLite** — exposes the framework through REST APIs and stores results.
+3. **React + TypeScript dashboard** — create tasks, start benchmarks, view traces and charts.
+   Talks only to the API; contains no agent or evaluation logic.
+
+Backend first; the dashboard comes after the API is stable. Each technology is added only
+when its phase begins.
 
 ## Current state
 **Phase 2 — Tools: ✅ complete** (user-reported: 37 passed).
@@ -29,7 +37,7 @@ A modular Python framework to **run** LLM agents on tasks with tools, **trace** 
 - Fixed: setuptools license deprecation warning → SPDX `license = "MIT"` + `license-files`
   (requires setuptools>=77). Verified: reinstall clean, 2 passed, `License-Expression: MIT`.
 - Git: `main` tracks `origin/main` on GitHub. Study notes: `docs/learning/phase-0-notes.md`.
-- Docker not installed (not needed until Phase 9).
+- Docker not installed (not needed until Phase 11).
 
 ## Key decisions
 | Decision | Choice | Why |
@@ -42,6 +50,8 @@ A modular Python framework to **run** LLM agents on tasks with tools, **trace** 
 | Models | Pydantic v2, `extra="forbid"` | Validation + JSON for free; typos caught |
 | Tool failures | Captured in `ToolCall.error`, never raised | Agent can retry; data for Phase 8 |
 | Calculator | AST walk, no `eval()` | Security; exponent capped at 100 |
+| Platform layers | Framework → FastAPI → React dashboard | Framework usable alone; UI only displays |
+| Long benchmark runs | API returns a `run_id` at once; dashboard polls | UI never freezes |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
@@ -57,10 +67,16 @@ A modular Python framework to **run** LLM agents on tasks with tools, **trace** 
 - [ ] **Phase 3** — LLM layer: `LLMClient`, `FakeLLM`, `GeminiClient`
 - [ ] **Phase 4** — Agent runner: ReAct-style loop, step limit, error handling, tracing
 - [ ] **Phase 5** — Evaluators: exact-match, contains, tool-usage; later LLM-as-judge
-- [ ] **Phase 6** — Benchmark runner: task suites, batch runs, metrics
-- [ ] **Phase 7** — Storage: SQLite for runs & traces
+- [ ] **Phase 6** — Benchmark runner: task suites, batch runs, metrics, agent configs + comparison
+- [ ] **Phase 7** — Storage: SQLite for runs & traces (adds `run_id`)
 - [ ] **Phase 8** — Failure analysis: categorize failures
-- [ ] **Phase 9** — FastAPI service + Docker
+- [ ] **Phase 9** — FastAPI backend: REST API over the framework and database
+- [ ] **Phase 10** — Dashboard: React + TypeScript + Tailwind + Recharts
+- [ ] **Phase 11** — Docker: package backend (and dashboard) for one-command start
+
+Planned model additions (added only in their phase): token counts on `Step` (Phase 3),
+`AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 3 — LLM layer: `LLMClient` interface, `FakeLLM`, `GeminiClient`. Waiting for user approval to start.
+**Learning stage:** re-teaching the already-built Phase 1 (data models) and Phase 2 (tools)
+concept by concept, with exercises, before starting Phase 3. No new code until the user approves.
