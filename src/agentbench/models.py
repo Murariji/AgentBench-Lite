@@ -2,12 +2,17 @@
 
 Flow of data:
     Task  ──run──►  Trace (list of Step, each may hold a ToolCall)  ──►  RunResult
+    Task + RunResult  ──evaluate──►  EvaluationResult (list of Check)
+
+Execution (RunResult: what happened) and evaluation (EvaluationResult: was it right)
+are deliberately separate, linked by ``run_id``.
 
 All models are Pydantic models, so they:
   * validate their data when created (bad data raises ``pydantic.ValidationError``)
   * convert to/from JSON with ``model_dump_json()`` / ``model_validate_json()``
 """
 
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Literal
 
@@ -17,10 +22,18 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 # evaluator (Phase 5), so there is deliberately no "success"/"failed" here.
 RunStatus = Literal["completed", "max_steps", "error"]
 
+# How a task's final answer is graded (see agentbench/evaluators.py).
+AnswerType = Literal["exact", "contains", "number"]
+
 
 def _utc_now() -> datetime:
     """Current time in UTC (timezone-aware, so it is unambiguous when stored)."""
     return datetime.now(timezone.utc)
+
+
+def _new_id() -> str:
+    """A random unique id, e.g. '9f1c2a7e...' (32 hex characters)."""
+    return uuid.uuid4().hex
 
 
 class _BaseModel(BaseModel):
@@ -46,6 +59,13 @@ class Task(_BaseModel):
         description="None = all registered tools; [] = no tools; a list = only those tools.",
     )
     max_steps: int = Field(default=10, gt=0, description="Safety limit for the agent loop.")
+    # ---- grading rules (used by evaluators, never by the runner) ----
+    answer_type: AnswerType = Field(default="exact", description="How the answer is graded.")
+    abs_tolerance: float = Field(default=0.0, ge=0, description="number only: allowed absolute difference.")
+    rel_tolerance: float = Field(default=0.0, ge=0, description="number only: allowed relative difference.")
+    required_tools: list[str] = Field(
+        default_factory=list, description="Tools that must be called successfully at least once."
+    )
 
 
 class ToolCall(_BaseModel):
@@ -98,6 +118,7 @@ class Trace(_BaseModel):
 class RunResult(_BaseModel):
     """Outcome of running one Task: how it ended, the answer, and the full trace."""
 
+    run_id: str = Field(default_factory=_new_id, min_length=1)  # links evaluations to this run
     task_id: str = Field(min_length=1)
     status: RunStatus
     final_answer: str | None = None
@@ -106,3 +127,27 @@ class RunResult(_BaseModel):
     error: str | None = None       # human-readable reason when status == "error"
     error_kind: str | None = None  # machine-readable, e.g. "quota_exhausted", "auth"
     llm_calls: int = Field(default=0, ge=0)  # real requests made, INCLUDING retries
+
+
+class Check(_BaseModel):
+    """One line on the marksheet: which rule, did it pass, and why."""
+
+    name: str = Field(min_length=1)    # e.g. "status", "answer:number", "required_tools"
+    passed: bool
+    reason: str = Field(min_length=1)  # always explained, also when it passed
+
+
+class EvaluationResult(_BaseModel):
+    """The verdict for one run. Every check is mandatory: passed = all checks passed."""
+
+    run_id: str = Field(min_length=1)
+    task_id: str = Field(min_length=1)
+    passed: bool
+    checks: list[Check] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _verdict_matches_checks(self) -> "EvaluationResult":
+        # The verdict is DERIVED from the checks; it can never disagree with them.
+        if self.passed != all(check.passed for check in self.checks):
+            raise ValueError("'passed' must be True exactly when every check passed")
+        return self

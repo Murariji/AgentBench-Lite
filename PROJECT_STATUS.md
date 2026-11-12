@@ -15,6 +15,22 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 5 — Step 5.1 Evaluators: ✅ complete.** Tests: **133 passed** (user-reported; 44 new).
+- `src/agentbench/evaluators.py`: `evaluate(task, result) -> EvaluationResult`. Separate mandatory
+  checks: `status`, `answer:<exact|contains|number>`, `required_tools` (only if the task lists any).
+  Verdict = all checks passed — no score, no averaging (enforced by a model validator).
+- Number check: currency removed from a fixed list (₹ $ € £ Rs INR USD rupees dollars); commas only
+  as Western/Indian thousands separators ("1,5" refused); `Decimal` for exact values; multiple
+  numbers → only one / after the last marker (=, is, answer:, total:) / all equal, else
+  "ambiguous" failure. Configurable `abs_tolerance` / `rel_tolerance` (default 0 = exact).
+- Required tools need ≥ 1 SUCCESSFUL call (failed attempts are reported, not counted).
+- Models: `Task` + `answer_type`, `abs_tolerance`, `rel_tolerance`, `required_tools`;
+  `RunResult.run_id` (uuid4); new `Check(name, passed, reason)`, `EvaluationResult(run_id, ...)`.
+- Decided: no `forbidden_tools` (use `allowed_tools`); no score in Step 5.1.
+- Known limitation (tested on purpose): text checks don't understand meaning, e.g.
+  contains "Delhi" passes for "Not Delhi, it's Mumbai". LLM-as-judge out of scope (₹0 budget).
+- Notes: `docs/learning/phase-5-notes.md`.
+
 **Phase 4 — Agent runner: ✅ complete.** Tests: **89 passed** (user-reported).
 - `src/agentbench/runner.py`: `AgentRunner.run(task) -> RunResult` (ReAct loop) + `RetryPolicy`.
   Endings: `completed` (final text), `max_steps`, `error`. Tool errors are fed back to the model
@@ -93,6 +109,8 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 | Thought signatures | Kept opaque in `ToolRequest.provider_data` | Gemini needs them echoed back; rest of code stays provider-free |
 | Retries | Runner owns them; SDK retries off; bounded backoff | Never an uncontrolled request loop on a free quota |
 | Dependency injection | Runner receives llm, tools, sleep, clock | FakeLLM + instant retry tests |
+| Verdict | All checks mandatory; `passed = all(checks)`; no score | Averages hide why a run failed |
+| Number grading | Decimal + 4-rule extraction; refuse when unsure | Never silently accept a wrong number |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
@@ -121,7 +139,7 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 5 — Evaluators (exact match, contains, numeric tolerance, tool usage).
-Proposal under discussion: bring the realistic "Data Analyst" tool pack forward from Phase 6
-(read-only `sql_query` over a sample SQLite shop DB, `list_tables`/`describe_table`, `date_tool`).
-Waiting for user approval.
+Phase 5, Step 5.2 — Data Analyst SQL tools over a fixed-seed sample shop SQLite DB:
+fixed path, read-only connection, `PRAGMA query_only`, single SELECT/WITH statement, row/output
+limits, progress-handler timeout, extension loading disabled, attack tests. Then Step 5.3 (task
+suite with answers proven by reference SQL). Waiting for user approval.

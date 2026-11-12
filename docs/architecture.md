@@ -2,7 +2,8 @@
 
 > This describes the **intended** design. Implemented so far: the package skeleton and
 > **Models** (`src/agentbench/models.py`), **Tools** (`src/agentbench/tools/`) and the
-> **LLM layer** (`src/agentbench/llm/`) and the **Runner** (`src/agentbench/runner.py`). Update this file whenever the design changes.
+> **LLM layer** (`src/agentbench/llm/`) the **Runner** (`src/agentbench/runner.py`) and
+> **Evaluators** (`src/agentbench/evaluators.py`). Update this file whenever the design changes.
 
 ## Platform layers
 
@@ -54,12 +55,18 @@ Trace ──► Evaluator (did it succeed?) ──► Analyzer (why did it fail?
 | Tools ✅ | `Tool` base class + registry of callable tools | Models |
 | LLM layer ✅ | `LLMClient` interface; `FakeLLM` for tests, `GeminiClient` first real provider | Models |
 | Runner ✅ | The agent loop, step limit, error handling, trace recording | Models, Tools, LLM |
-| Evaluators | Score a `RunResult` against the task's expected outcome | Models |
+| Evaluators ✅ | Judge a `RunResult` against the task: separate checks → `EvaluationResult` | Models |
 | Analyzer | Classify failures from traces | Models |
 | Storage | Persist runs and traces in SQLite | Models |
 | Benchmark runner | Run task suites with an `AgentConfig`; metrics; compare configs | Runner, Evaluators |
 | API | FastAPI REST service exposing tasks, runs, traces and metrics | Framework, Storage |
 | Dashboard | React + TypeScript UI: tasks, runs, trace viewer, charts | API only |
+
+## Execution vs. evaluation
+
+The runner records **what happened** (`RunResult`, status `completed | max_steps | error`).
+Evaluators decide **whether it was right** (`EvaluationResult`, list of `Check`s, linked by
+`run_id`). Evaluation never calls an LLM, so saved runs can be re-graded for free.
 
 ## Design principles
 

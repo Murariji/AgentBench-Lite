@@ -15,7 +15,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 |---|---|---|
 | **Runner** | Execute an agent on a task with tools and a step limit | ✅ Implemented |
 | **Tracer** | Record every step: prompt, tool call, arguments, result, timing, tokens | ✅ Implemented |
-| **Evaluator** | Decide whether the task was completed correctly | 🗓️ Planned |
+| **Evaluator** | Decide whether the task was completed correctly | ✅ Implemented (deterministic) |
 | **Analyzer** | Categorize failures (wrong tool, bad arguments, loops, wrong answer) | 🗓️ Planned |
 | **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | ✅ Implemented |
 | **Benchmarks** | Run task suites, compute metrics, compare agent configurations | 🗓️ Planned |
@@ -35,6 +35,17 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 - ✅ Agent loop (`agentbench.runner.AgentRunner`): ReAct loop with step limit, tool-error feedback,
   bounded retries (429 per-minute / 5xx / network), hard stop on auth errors and daily quota,
   and a full trace of every step
+- ✅ Evaluators (`agentbench.evaluators.evaluate`): separate checks for run status, answer
+  (exact / contains / robust number matching with tolerances) and required tool usage;
+  verdict = all checks passed, every check explains its reason
+
+## Evaluation limitations
+
+Evaluators are deterministic: free, instant and repeatable, but they compare text and numbers,
+not meaning. "New Delhi" vs "Delhi" is a mismatch, and a contains-check accepts "Not Delhi".
+Open-ended answers (summaries, explanations) can't be graded this way; an LLM judge would be
+needed, which is out of scope to keep the project at zero cost. Benchmark tasks are therefore
+designed to have crisp answers (a number, a name, a category).
 
 ## Tech stack
 
