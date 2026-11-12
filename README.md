@@ -41,6 +41,20 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 - ✅ Data Analyst tools: a fixed-seed sample shop database (SQLite) and read-only `list_tables`,
   `describe_table`, `sql_query`, protected by SQLite itself (read-only mode, `query_only`, an
   allowlist authorizer, size and time limits) — see [SQL tool safety](#sql-tool-safety)
+- ✅ Shop Data Analyst benchmark (`agentbench.suites`): 10 tasks (COUNT → LEFT JOIN traps →
+  multi-table revenue → percentages); every expected answer proven by independent reference SQL
+
+## Try the benchmark (free, no API key)
+
+```powershell
+python scripts/run_shop_task.py             # scripted agent solves shop-003  -> PASSED
+python scripts/run_shop_task.py --mistake   # same task with an INNER JOIN bug -> completed, but FAILED
+python scripts/run_shop_task.py --gemini shop-004   # real Gemini (free tier, ~5 requests)
+```
+
+Each run prints the execution trace (every SQL query and its result) and the evaluation (every
+check with its reason). The `--mistake` run shows why execution and evaluation are separate: the
+agent finished and used the right tool, but its answer was wrong.
 
 ## Evaluation limitations
 

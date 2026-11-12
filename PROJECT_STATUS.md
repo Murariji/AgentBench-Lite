@@ -15,7 +15,24 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Phase 5 — Step 5.2 SQL tools + shop database: ✅ complete.** Tests: **191 passed** (user-reported; 58 new).
+**Phase 5 — Evaluators + Data Analyst benchmark: ✅ complete** (Steps 5.1, 5.2, 5.3).
+
+**Step 5.3 Shop benchmark suite: ✅ complete.** Tests: **228 passed** (user-reported; 37 new).
+- `src/agentbench/suites/shop.py`: `SHOP_TASKS` (10 tasks: 2 easy, 4 medium, 4 hard), `get_task()`,
+  `shop_registry(db)` (exactly the advertised tools: `list_tables`, `describe_table`, `sql_query`,
+  `calculator` — calculator verified to exist, the Phase 2 AST-based tool). All tasks: required
+  `sql_query`, max 8 steps, answer format stated in the prompt. shop-009 ±0.05, shop-010 ±1.
+- `tests/test_shop_suite.py`: independent reference SQL (different approach, e.g. NOT IN vs LEFT JOIN)
+  agreed with all 10 proposed answers — no discrepancies; tie checks for the 5 "which X" tasks;
+  the evaluator accepts every reference answer and rejects 7 trap answers; ids unique, required ⊆
+  allowed ⊆ registered; end-to-end run with real tools + DB (good agent passes, INNER JOIN mistake
+  completes but fails).
+- `scripts/run_shop_task.py`: one task end to end (trace + evaluation). User ran: FakeLLM good → PASSED;
+  `--mistake` → completed but FAILED (answer 0, expected 3); `--gemini shop-004` (gemini-3.5-flash-lite) →
+  explored schema, joined order_items, avoided the never-ordered Smart Watch trap → PASSED, 5 LLM calls,
+  33.2 s (no retries; free-tier latency).
+
+**Step 5.2 SQL tools + shop database: ✅ complete.** Tests: **191 passed** (user-reported; 58 new).
 - `src/agentbench/datasets/shop.py`: fixed-seed (2026) shop DB — 30 customers / 7 cities, 15 products /
   4 categories, 150 orders Jan–Jun 2026, 369 order items. Edge cases: multi-product orders, 3 customers
   without orders, 2 products never ordered. `build_shop_db(path, overwrite=False)`: refuses to overwrite;
@@ -36,7 +53,7 @@ when its phase begins.
 - Limitation (documented): constrained read-only SQL tool, not an OS sandbox; SQLite bugs, readable data,
   approximate time limit and semantically wrong queries are out of its scope.
 
-**Phase 5 — Step 5.1 Evaluators: ✅ complete.** Tests: **133 passed** (user-reported; 44 new).
+**Step 5.1 Evaluators: ✅ complete.** Tests: **133 passed** (user-reported; 44 new).
 - `src/agentbench/evaluators.py`: `evaluate(task, result) -> EvaluationResult`. Separate mandatory
   checks: `status`, `answer:<exact|contains|number>`, `required_tools` (only if the task lists any).
   Verdict = all checks passed — no score, no averaging (enforced by a model validator).
@@ -134,6 +151,8 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 | Number grading | Decimal + 4-rule extraction; refuse when unsure | Never silently accept a wrong number |
 | SQL safety | SQLite engine layers are the boundary; text check only for messages | Regex can be tricked; an allowlist authorizer can't |
 | Dataset | Generated from a fixed seed, built on demand, never committed | Same answers everywhere; no binary files in git |
+| Answer key | Proven by independent reference SQL + tie checks in tests | A wrong key makes every score a lie |
+| Benchmark data | Private generated DB | No contamination: answers exist nowhere online |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
@@ -149,7 +168,7 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 - [x] **Phase 2** — Tools: `Tool` base + registry; 2–3 simple tools
 - [x] **Phase 3** — LLM layer: `LLMClient`, `FakeLLM`, `GeminiClient`
 - [x] **Phase 4** — Agent runner: ReAct-style loop, step limit, error handling, tracing
-- [ ] **Phase 5** — Evaluators: exact-match, contains, tool-usage; later LLM-as-judge
+- [x] **Phase 5** — Evaluators: exact-match, contains, tool-usage; later LLM-as-judge
 - [ ] **Phase 6** — Benchmark runner: task suites, batch runs, metrics, agent configs + comparison;
   more realistic tools (SQL query over sample SQLite DB, date calculator, unit converter, file reader)
 - [ ] **Phase 7** — Storage: SQLite for runs & traces (adds `run_id`)
@@ -162,6 +181,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 5, Step 5.3 — shop task suite (~10 tasks, easy → hard) with every expected answer proven by an
-independently written reference SQL query; avoid ambiguous questions (e.g. the 4-way tie for most
-customers per city); demo running one task + evaluation. Waiting for user approval.
+Phase 6 — Benchmark runner: run a whole suite, pass rate and metrics (steps, tokens, latency, LLM calls,
+failure reasons), pacing between requests for free-tier per-minute limits, an `AgentConfig` for
+comparing configurations. A full shop suite run with Gemini ≈ 40–60 requests. Waiting for user approval.

@@ -4,7 +4,8 @@
 > **Models** (`src/agentbench/models.py`), **Tools** (`src/agentbench/tools/`) and the
 > **LLM layer** (`src/agentbench/llm/`) the **Runner** (`src/agentbench/runner.py`) and
 > **Evaluators** (`src/agentbench/evaluators.py`), the **shop dataset** (`src/agentbench/datasets/`)
-> and the read-only **SQL tools** (`src/agentbench/tools/sql.py`). Update this file whenever the design changes.
+> the read-only **SQL tools** (`src/agentbench/tools/sql.py`) and the **shop suite**
+> (`src/agentbench/suites/`). Update this file whenever the design changes.
 
 ## Platform layers
 
@@ -55,6 +56,7 @@ Trace ──► Evaluator (did it succeed?) ──► Analyzer (why did it fail?
 | Models ✅ | Pydantic data types: `Task`, `ToolCall`, `Step`, `Trace`, `RunResult` | — |
 | Tools ✅ | `Tool` base class + registry; builtin + read-only SQL tools | Models |
 | Datasets ✅ | Fixed-seed benchmark data (shop SQLite DB), built on demand | — |
+| Suites ✅ | Benchmark tasks (shop: 10 tasks) + the registry of tools they need | Models, Tools |
 | LLM layer ✅ | `LLMClient` interface; `FakeLLM` for tests, `GeminiClient` first real provider | Models |
 | Runner ✅ | The agent loop, step limit, error handling, trace recording | Models, Tools, LLM |
 | Evaluators ✅ | Judge a `RunResult` against the task: separate checks → `EvaluationResult` | Models |
