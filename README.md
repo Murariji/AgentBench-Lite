@@ -3,7 +3,7 @@
 **An AI Agent Evaluation & Reliability Platform** — run LLM-powered agents on tasks,
 record every step, measure performance, analyze why they fail, and view it all in a dashboard.
 
-> **Status: early development.** Core data models, tools and the LLM layer (FakeLLM + Gemini) exist today.
+> **Status: early development.** Data models, tools, LLM layer (FakeLLM + Gemini) and the agent loop exist today.
 > Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
 
 ## What it will do
@@ -13,8 +13,8 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 
 | Component | Purpose | Status |
 |---|---|---|
-| **Runner** | Execute an agent on a task with tools and a step limit | 🗓️ Planned |
-| **Tracer** | Record every step: prompt, tool call, arguments, result, timing, tokens | 🗓️ Planned |
+| **Runner** | Execute an agent on a task with tools and a step limit | ✅ Implemented |
+| **Tracer** | Record every step: prompt, tool call, arguments, result, timing, tokens | ✅ Implemented |
 | **Evaluator** | Decide whether the task was completed correctly | 🗓️ Planned |
 | **Analyzer** | Categorize failures (wrong tool, bad arguments, loops, wrong answer) | 🗓️ Planned |
 | **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | ✅ Implemented |
@@ -32,6 +32,9 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
   `calculator` (safe, no `eval`), `word_count`, `lookup`
 - ✅ LLM layer (`agentbench.llm`): provider-independent `LLMClient`, `FakeLLM` for offline tests,
   `GeminiClient` (free tier) with tool calling and token counts
+- ✅ Agent loop (`agentbench.runner.AgentRunner`): ReAct loop with step limit, tool-error feedback,
+  bounded retries (429 per-minute / 5xx / network), hard stop on auth errors and daily quota,
+  and a full trace of every step
 
 ## Tech stack
 
@@ -61,7 +64,10 @@ pytest
 python -m pip install -e ".[dev,gemini]"
 Copy-Item .env.example .env      # then put your free AI Studio key in .env (never commit it)
 python scripts/try_gemini.py     # one real tool-calling round trip
+python scripts/run_agent.py --gemini   # full agent loop on a 3-tool task
 ```
+
+Without any key: `python scripts/run_agent.py` runs the same task with the scripted FakeLLM.
 
 On macOS/Linux, activate with `source .venv/bin/activate`.
 

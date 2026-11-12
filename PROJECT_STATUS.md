@@ -15,6 +15,27 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 4 — Agent runner: ✅ complete.** Tests: **89 passed** (user-reported).
+- `src/agentbench/runner.py`: `AgentRunner.run(task) -> RunResult` (ReAct loop) + `RetryPolicy`.
+  Endings: `completed` (final text), `max_steps`, `error`. Tool errors are fed back to the model
+  (`is_error=True`) so it can self-correct. Every step recorded (tool call, tokens, timestamp).
+- Quota/billing policy (₹0): `LLMError.kind` = auth | rate_limit | quota_exhausted | server |
+  network | bad_request | invalid_response | unknown. Retryable only: rate_limit, server, network,
+  with bounded exponential backoff (default 3 attempts, 1s→2s, cap 30s). `Retry-After` /
+  `RetryInfo` respected; waits > 60s → stop. 429 per-day or zero free quota → hard stop.
+  401/403 → immediate stop. Gemini SDK's own retries disabled (`attempts=1`), 60s timeout.
+  Request budget per run ≤ `max_steps × max_attempts`; `RunResult.llm_calls` counts every request.
+- Model changes: `RunStatus` = completed | max_steps | error (correctness is Phase 5);
+  `Task.allowed_tools`: None = all, [] = none, list = only those; `RunResult.error`,
+  `error_kind`, `llm_calls`. Task listing unregistered tools → `error_kind="config"`, 0 API calls.
+- `FakeLLM` scripts may contain `LLMError`s (simulate 429/401/503/network); `.remaining` property.
+- Demo: `scripts/run_agent.py` (FakeLLM, free/offline) → answer 130 in 4 steps.
+  Real run `--gemini` (gemini-3.5-flash-lite, user ran it): same 4-step plan, answer 130,
+  4 LLM calls, 7.12s, input tokens grew 253→289→322→355 as history was resent.
+- 429 classifier tests use hand-written error JSON in Google's documented format; verify
+  against the first real 429 seen.
+- Notes: `docs/learning/phase-4-notes.md`.
+
 **Phase 3 — LLM layer: ✅ complete.** Tests: **49 passed** (pytest output shared by user).
 Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 `calculator {'expression': '0.15 * 840'}` → tool returned `126` → model answered "15% of 840 is 126."
@@ -70,6 +91,8 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 | Budget | ₹0: free tiers + open source only, billing disabled | Learning/portfolio project |
 | LLM errors | One `LLMError` type (with `status_code`) for all providers | Runner catches one thing; 4xx vs 5xx retry policy |
 | Thought signatures | Kept opaque in `ToolRequest.provider_data` | Gemini needs them echoed back; rest of code stays provider-free |
+| Retries | Runner owns them; SDK retries off; bounded backoff | Never an uncontrolled request loop on a free quota |
+| Dependency injection | Runner receives llm, tools, sleep, clock | FakeLLM + instant retry tests |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
@@ -84,7 +107,7 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 - [x] **Phase 1** — Core data models (Pydantic): `Task`, `ToolCall`, `Step`, `Trace`, `RunResult`
 - [x] **Phase 2** — Tools: `Tool` base + registry; 2–3 simple tools
 - [x] **Phase 3** — LLM layer: `LLMClient`, `FakeLLM`, `GeminiClient`
-- [ ] **Phase 4** — Agent runner: ReAct-style loop, step limit, error handling, tracing
+- [x] **Phase 4** — Agent runner: ReAct-style loop, step limit, error handling, tracing
 - [ ] **Phase 5** — Evaluators: exact-match, contains, tool-usage; later LLM-as-judge
 - [ ] **Phase 6** — Benchmark runner: task suites, batch runs, metrics, agent configs + comparison;
   more realistic tools (SQL query over sample SQLite DB, date calculator, unit converter, file reader)
@@ -98,5 +121,7 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 4 — Agent runner: the loop (LLM → tool → result → repeat), step limit, retries on 429/503
-(not on 401), full trace recording. Built and tested with `FakeLLM`. Waiting for user approval.
+Phase 5 — Evaluators (exact match, contains, numeric tolerance, tool usage).
+Proposal under discussion: bring the realistic "Data Analyst" tool pack forward from Phase 6
+(read-only `sql_query` over a sample SQLite shop DB, `list_tables`/`describe_table`, `date_tool`).
+Waiting for user approval.
