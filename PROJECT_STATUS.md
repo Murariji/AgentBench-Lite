@@ -15,6 +15,27 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 5 — Step 5.2 SQL tools + shop database: ✅ complete.** Tests: **191 passed** (user-reported; 58 new).
+- `src/agentbench/datasets/shop.py`: fixed-seed (2026) shop DB — 30 customers / 7 cities, 15 products /
+  4 categories, 150 orders Jan–Jun 2026, 369 order items. Edge cases: multi-product orders, 3 customers
+  without orders, 2 products never ordered. `build_shop_db(path, overwrite=False)`: refuses to overwrite;
+  builds in a temp file then atomic `os.replace`. `scripts/build_shop_db.py [--rebuild]` → `data/shop.db`
+  (git-ignored). Verified by user: built, counts as designed.
+- `src/agentbench/tools/sql.py`: `ReadOnlySQLite` + `list_tables`, `describe_table`, `sql_query`.
+  Engine layers (security boundary): fixed path, `mode=ro`, `PRAGMA query_only`, authorizer ALLOWLIST
+  (SELECT, READ, FUNCTION, RECURSIVE; `load_extension` denied), extension loading off, size limits
+  (1 MB values, 5,000-char SQL, 0 attached DBs), progress-handler time limit (~2 s, APPROXIMATE),
+  one statement only. Our-code layers (messages/tokens only): SELECT/WITH check, 50 rows, 200-char
+  cells, 4,000-char output. `describe_table`/`list_tables` never run model SQL.
+- Tests: valid analytical SQL allowed (JOIN, GROUP BY, aggregates, WITH, WITH RECURSIVE); attacks blocked
+  even with the text check bypassed (`WITH x AS (SELECT 1) DELETE ...`); DB file SHA-256 unchanged after
+  every blocked write; timeouts, size and output limits tested. Real `data/shop.db` checked: DELETE
+  blocked, file unchanged.
+- Fix: tests could not create temp folders in the Windows temp directory ("Access is denied", most likely
+  caused by Claude's sandboxed test run). pytest now uses `--basetemp=.pytest_tmp` (git-ignored).
+- Limitation (documented): constrained read-only SQL tool, not an OS sandbox; SQLite bugs, readable data,
+  approximate time limit and semantically wrong queries are out of its scope.
+
 **Phase 5 — Step 5.1 Evaluators: ✅ complete.** Tests: **133 passed** (user-reported; 44 new).
 - `src/agentbench/evaluators.py`: `evaluate(task, result) -> EvaluationResult`. Separate mandatory
   checks: `status`, `answer:<exact|contains|number>`, `required_tools` (only if the task lists any).
@@ -111,6 +132,8 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 | Dependency injection | Runner receives llm, tools, sleep, clock | FakeLLM + instant retry tests |
 | Verdict | All checks mandatory; `passed = all(checks)`; no score | Averages hide why a run failed |
 | Number grading | Decimal + 4-rule extraction; refuse when unsure | Never silently accept a wrong number |
+| SQL safety | SQLite engine layers are the boundary; text check only for messages | Regex can be tricked; an allowlist authorizer can't |
+| Dataset | Generated from a fixed seed, built on demand, never committed | Same answers everywhere; no binary files in git |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
@@ -139,7 +162,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 5, Step 5.2 — Data Analyst SQL tools over a fixed-seed sample shop SQLite DB:
-fixed path, read-only connection, `PRAGMA query_only`, single SELECT/WITH statement, row/output
-limits, progress-handler timeout, extension loading disabled, attack tests. Then Step 5.3 (task
-suite with answers proven by reference SQL). Waiting for user approval.
+Phase 5, Step 5.3 — shop task suite (~10 tasks, easy → hard) with every expected answer proven by an
+independently written reference SQL query; avoid ambiguous questions (e.g. the 4-way tie for most
+customers per city); demo running one task + evaluation. Waiting for user approval.

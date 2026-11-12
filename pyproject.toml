@@ -47,4 +47,8 @@ version = { attr = "agentbench.__version__" }
 # pytest settings (pytest reads them from here; no separate pytest.ini needed).
 [tool.pytest.ini_options]
 testpaths = ["tests"]               # only look for tests in tests/
-addopts = "-ra"                     # print a short summary of skipped/failed tests
+# -ra: print a short summary of skipped/failed tests.
+# --basetemp: temporary test files (e.g. test databases) go in .pytest_tmp/ inside the
+# project instead of the system temp folder. pytest empties it at the start of every run.
+# (Run pytest from the project folder.)
+addopts = "-ra --basetemp=.pytest_tmp"

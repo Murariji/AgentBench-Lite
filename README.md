@@ -38,6 +38,9 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 - ✅ Evaluators (`agentbench.evaluators.evaluate`): separate checks for run status, answer
   (exact / contains / robust number matching with tolerances) and required tool usage;
   verdict = all checks passed, every check explains its reason
+- ✅ Data Analyst tools: a fixed-seed sample shop database (SQLite) and read-only `list_tables`,
+  `describe_table`, `sql_query`, protected by SQLite itself (read-only mode, `query_only`, an
+  allowlist authorizer, size and time limits) — see [SQL tool safety](#sql-tool-safety)
 
 ## Evaluation limitations
 
@@ -47,11 +50,31 @@ Open-ended answers (summaries, explanations) can't be graded this way; an LLM ju
 needed, which is out of scope to keep the project at zero cost. Benchmark tasks are therefore
 designed to have crisp answers (a number, a name, a category).
 
+## SQL tool safety
+
+The agent's SQL is treated as untrusted input. The security boundary is SQLite itself: the
+database path is fixed in code, the file is opened read-only, `PRAGMA query_only` is on, and an
+authorizer allowlist permits only reading (SELECT, column reads, functions, recursive CTEs) while
+denying writes, schema changes, `ATTACH`, `PRAGMA` and extension loading. Size limits and a
+progress-handler time limit stop resource-heavy queries; row and output limits protect token
+usage. A text check for SELECT/WITH only exists to give the agent a clear error message.
+
+**Limitations:** this is a constrained read-only SQL tool, not an operating-system sandbox. It
+does not protect against bugs in SQLite itself, everything in the database is readable by the
+agent (never store secrets there), the time limit is approximate (checked every 1,000 SQLite
+steps, not a strict wall-clock timeout), and it cannot stop semantically wrong queries — those
+are agent mistakes, which is exactly what the benchmark measures.
+
+```powershell
+python scripts/build_shop_db.py   # builds data/shop.db (refuses to overwrite; --rebuild to replace)
+```
+
 ## Tech stack
 
 - Python 3.11+
 - Pydantic v2 (data models & validation)
 - pytest (testing)
+- SQLite (Python's built-in `sqlite3`) for the benchmark database
 - Google Gemini API, free tier (`google-genai`), `python-dotenv` — optional extra
 - Planned: SQLite, FastAPI, React + TypeScript + Tailwind CSS + Recharts, Docker
 

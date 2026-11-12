@@ -103,3 +103,68 @@ PART 6 - SELF-CHECK
    -> which rule, which number?
 5. Why is "1,5" refused instead of read as 15 or 1.5?
 6. Why Decimal instead of float?
+
+
+
+=====================================================================
+STEP 5.2 - SAFE SQL TOOLS + SHOP DATABASE   (completed 2026-11-12)
+=====================================================================
+
+WHY IT MATTERS
+  The model WRITES SQL and we RUN it. Its SQL depends on text it reads,
+  so it can be tricked (prompt injection). Treat it as untrusted input.
+
+THREATS                                  STOPPED BY
+  change/destroy data (DELETE, DROP)     read-only file, query_only, authorizer
+  read OTHER files (ATTACH 'x.db')       authorizer + 0 attached DBs
+  run native code (load_extension)       extensions off + authorizer
+  freeze (infinite recursion, joins)     progress-handler time limit
+  eat memory (randomblob(1e9))           size limits
+  burn tokens (SELECT * huge)            50 rows, 200-char cells, 4000 chars
+  sneak a 2nd statement ("; DROP")       sqlite3 allows one statement only
+  switch protection off (PRAGMA)         authorizer denies PRAGMA
+
+AUTHORIZER = a guard who opens the bag and checks each item.
+  SQLite asks our function before EVERY action ("may I read
+  fruits.price?", "may I DELETE?", "may I ATTACH?").
+  ALLOWLIST: SELECT, READ, FUNCTION, RECURSIVE. Everything else DENY.
+  Allowlist > blocklist: unknown actions are denied by default.
+
+REGEX IS NOT THE BOUNDARY
+  "WITH x AS (SELECT 1) DELETE FROM orders" starts with WITH, so it
+  PASSES our text check - and SQLite still blocks it. Tests call
+  db._run() (skips the text check) to prove the engine alone is safe.
+  Every attack test compares the DB file's SHA-256 before/after.
+
+TIME LIMIT IS APPROXIMATE
+  the progress handler runs every 1000 SQLite steps, not every ms.
+
+SAFE DB BUILD
+  refuse if the file exists (overwrite=True / --rebuild to replace);
+  write to a temp file, then os.replace (atomic) - a crash never leaves
+  a half-built shop.db.
+
+DATASET (fixed seed 2026): 30 customers / 7 cities, 15 products /
+  4 categories, 150 orders Jan-Jun 2026, 369 order items.
+  Traps: multi-product orders, 3 customers with no orders (LEFT vs
+  INNER JOIN), 2 products never ordered. Note: 4 cities tie at 5
+  customers -> avoid ambiguous "which city has the most" questions.
+
+LIMITATIONS: not an OS sandbox; SQLite bugs; all data readable;
+  approximate timeout; can't stop WRONG queries (that's the benchmark).
+
+THE TEMP-FOLDER ERROR
+  58 tests: "ERROR at setup ... PermissionError: Access is denied:
+  ...\Temp\pytest-of-<user>". Cause: Windows folder permissions,
+  most likely broken by Claude's sandboxed test run.
+  ERROR at setup = test never started (environment problem)
+  FAILED         = test ran, an assertion was wrong (code problem)
+  Fix: pyproject addopts "--basetemp=.pytest_tmp" (inside the project,
+  git-ignored, emptied every run).
+
+SELF-CHECK
+  1. Why is the model's SQL untrusted even in our own agent?
+  2. Why isn't a fixed path in our code enough to stop reading other files?
+  3. Allowlist vs blocklist - which is safer and why?
+  4. If the SELECT text check is bypassed, what still stops DELETE?
+  5. "ERROR at setup" vs "FAILED" - what does each tell you?
