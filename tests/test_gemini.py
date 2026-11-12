@@ -89,3 +89,67 @@ def test_gemini_client_without_key_gives_clear_error(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     with pytest.raises(LLMError, match="GEMINI_API_KEY"):
         gemini.GeminiClient()
+
+
+# ---------- error classification (simulated Google error JSON, no network) ---
+
+def _quota_error(*violations, retry_delay=None):
+    details = [{"@type": "type.googleapis.com/google.rpc.QuotaFailure", "violations": list(violations)}]
+    if retry_delay:
+        details.append({"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": retry_delay})
+    return {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED", "details": details}}
+
+
+def test_429_per_minute_requests_is_retryable_with_wait():
+    err = gemini.classify_api_error(
+        429, "quota", _quota_error(
+            {"quotaId": "GenerateRequestsPerMinutePerProjectPerModel-FreeTier", "quotaValue": "15"},
+            retry_delay="34s",
+        ),
+    )
+    assert err.kind == "rate_limit" and err.retryable and err.retry_after == 34.0
+    assert "requests-per-minute" in str(err)
+
+
+def test_429_per_minute_tokens_is_retryable():
+    err = gemini.classify_api_error(
+        429, "quota", _quota_error({"quotaId": "GenerateContentInputTokensPerModelPerMinute-FreeTier"})
+    )
+    assert err.kind == "rate_limit" and "tokens-per-minute" in str(err)
+
+
+def test_429_per_day_is_a_hard_stop():
+    err = gemini.classify_api_error(
+        429, "quota", _quota_error({"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+                                    "quotaValue": "20"})
+    )
+    assert err.kind == "quota_exhausted" and not err.retryable
+
+
+def test_429_with_zero_free_quota_is_a_hard_stop():
+    err = gemini.classify_api_error(
+        429, "quota", _quota_error({"quotaId": "GenerateRequestsPerMinutePerProjectPerModel-FreeTier",
+                                    "quotaValue": "0"})
+    )
+    assert err.kind == "quota_exhausted" and "no free-tier quota" in str(err)
+
+
+def test_retry_after_header_is_used_when_no_retry_info():
+    err = gemini.classify_api_error(429, "slow down", {}, headers={"retry-after": "7"})
+    assert err.kind == "rate_limit" and err.retry_after == 7.0
+
+
+@pytest.mark.parametrize(
+    "code, message, kind",
+    [
+        (401, "API key not valid", "auth"),
+        (403, "permission denied", "auth"),
+        (400, "API key not valid. Please pass a valid API key.", "auth"),
+        (503, "high demand", "server"),
+        (500, "internal", "server"),
+        (404, "model not found", "bad_request"),
+        (418, "teapot", "unknown"),
+    ],
+)
+def test_other_http_errors_are_classified(code, message, kind):
+    assert gemini.classify_api_error(code, message).kind == kind

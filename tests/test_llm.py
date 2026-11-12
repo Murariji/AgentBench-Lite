@@ -66,3 +66,29 @@ def test_fake_llm_raises_when_script_runs_out():
     llm = FakeLLM([])
     with pytest.raises(LLMError):
         llm.generate([Message(role="user", text="hi")], [])
+
+
+# ---------- LLMError kinds + FakeLLM failures ---------------------------------
+
+@pytest.mark.parametrize(
+    "kind, retryable",
+    [
+        ("rate_limit", True), ("server", True), ("network", True),
+        ("auth", False), ("quota_exhausted", False), ("bad_request", False),
+        ("invalid_response", False), ("unknown", False),
+    ],
+)
+def test_only_temporary_errors_are_retryable(kind, retryable):
+    assert LLMError("x", kind=kind).retryable is retryable
+
+
+def test_fake_llm_can_simulate_api_errors():
+    llm = FakeLLM([
+        LLMError("busy", kind="server", status_code=503),
+        LLMResponse(text="ok"),
+    ])
+    with pytest.raises(LLMError) as info:
+        llm.generate([Message(role="user", text="hi")], [])
+    assert info.value.status_code == 503 and info.value.retryable
+    assert llm.generate([Message(role="user", text="hi")], []).text == "ok"
+    assert len(llm.calls) == 2  # every attempt is counted, failed or not

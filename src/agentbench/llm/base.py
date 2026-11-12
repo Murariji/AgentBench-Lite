@@ -15,6 +15,22 @@ class _LLMModel(BaseModel):
     model_config = ConfigDict(extra="forbid")  # typos in field names are errors
 
 
+# What went wrong, in provider-independent words. The runner decides what to do from this.
+LLMErrorKind = Literal[
+    "auth",              # bad/missing key (401/403)            -> stop immediately
+    "rate_limit",        # per-MINUTE limit (requests or tokens) -> wait, then bounded retry
+    "quota_exhausted",   # per-DAY limit, or model has no free quota -> stop, don't retry
+    "server",            # provider overloaded/broken (5xx)      -> bounded retry
+    "network",           # no internet, timeout, connection lost -> bounded retry
+    "bad_request",       # our request was invalid (400/404)     -> stop
+    "invalid_response",  # reply had no text and no tool call    -> stop
+    "unknown",           # anything else                         -> stop
+]
+
+# Temporary problems: trying again later can work. Everything else is a hard stop.
+RETRYABLE_KINDS: frozenset[str] = frozenset({"rate_limit", "server", "network"})
+
+
 class LLMError(Exception):
     """Any failure talking to an LLM: missing key, rate limit, network, bad reply.
 
@@ -22,9 +38,22 @@ class LLMError(Exception):
     only has to catch ``LLMError`` no matter which provider is used.
     """
 
-    def __init__(self, message: str, status_code: int | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        kind: LLMErrorKind = "unknown",
+        status_code: int | None = None,
+        retry_after: float | None = None,
+    ) -> None:
         super().__init__(message)
-        self.status_code = status_code  # e.g. 429 = rate limit, 401/403 = bad key
+        self.kind = kind
+        self.status_code = status_code  # e.g. 429, 401, 503 (None if not an HTTP error)
+        self.retry_after = retry_after  # seconds the provider asked us to wait, if it said
+
+    @property
+    def retryable(self) -> bool:
+        return self.kind in RETRYABLE_KINDS
 
 
 class ToolRequest(_LLMModel):

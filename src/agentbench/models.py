@@ -13,8 +13,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-# The only ways a run can end. Using Literal means any other value is rejected.
-RunStatus = Literal["success", "failed", "error", "max_steps"]
+# The only ways a run can END. Whether the answer is CORRECT is decided later by an
+# evaluator (Phase 5), so there is deliberately no "success"/"failed" here.
+RunStatus = Literal["completed", "max_steps", "error"]
 
 
 def _utc_now() -> datetime:
@@ -40,8 +41,9 @@ class Task(_BaseModel):
     expected_answer: str | None = Field(
         default=None, description="Reference answer, used by evaluators later."
     )
-    allowed_tools: list[str] = Field(
-        default_factory=list, description="Names of tools the agent may use."
+    allowed_tools: list[str] | None = Field(
+        default=None,
+        description="None = all registered tools; [] = no tools; a list = only those tools.",
     )
     max_steps: int = Field(default=10, gt=0, description="Safety limit for the agent loop.")
 
@@ -101,3 +103,6 @@ class RunResult(_BaseModel):
     final_answer: str | None = None
     trace: Trace
     duration_seconds: float = Field(ge=0)
+    error: str | None = None       # human-readable reason when status == "error"
+    error_kind: str | None = None  # machine-readable, e.g. "quota_exhausted", "auth"
+    llm_calls: int = Field(default=0, ge=0)  # real requests made, INCLUDING retries

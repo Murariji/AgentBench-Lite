@@ -32,7 +32,7 @@ def make_trace() -> Trace:
 def test_task_valid_with_defaults():
     task = Task(id="math-001", prompt="What is 2+2?")
     assert task.expected_answer is None
-    assert task.allowed_tools == []
+    assert task.allowed_tools is None  # None = all tools allowed
     assert task.max_steps == 10
 
 
@@ -100,7 +100,7 @@ def test_runresult_json_round_trip():
     # Proves results can be saved (Phase 7) and sent over an API (Phase 9).
     original = RunResult(
         task_id="math-001",
-        status="success",
+        status="completed",
         final_answer="4",
         trace=make_trace(),
         duration_seconds=0.42,
