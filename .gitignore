@@ -27,6 +27,9 @@ results/
 *.sqlite
 *.sqlite3
 
+# --- Personal practice exercises (not part of the project) ---
+practice/
+
 # --- Editor / OS files ---
 .vscode/
 .idea/

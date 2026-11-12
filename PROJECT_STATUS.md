@@ -15,6 +15,21 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 3 — LLM layer: ✅ complete.** Tests: **49 passed** (pytest output shared by user).
+Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
+`calculator {'expression': '0.15 * 840'}` → tool returned `126` → model answered "15% of 840 is 126."
+(tokens in/out: 217/22, then 253/14).
+- `src/agentbench/llm/`: `base.py` (`LLMClient`, `Message`, `ToolRequest`, `LLMResponse`, `LLMError`),
+  `fake.py` (`FakeLLM`), `gemini.py` (`GeminiClient` + translation functions). `Step` gained
+  `input_tokens` / `output_tokens`.
+- Optional extra `gemini` = `google-genai>=3.2`, `python-dotenv>=1`. Key in git-ignored `.env`;
+  template `.env.example`. Script: `scripts/try_gemini.py` (`--check-key`, `--list-models`).
+- Tests: `tests/test_llm.py` (5), `tests/test_gemini.py` (7, skipped if SDK missing; no network).
+- Issues met: (1) first AI Studio key returned 401 `ACCESS_TOKEN_TYPE_UNSUPPORTED` (known issue with
+  new `AQ.` keys) → fixed by creating a new key; (2) `gemini-3.8-flash` returned 503 (overloaded) →
+  switched default to `gemini-3.5-flash-lite` (larger free quota).
+- Notes: `docs/learning/phase-3-notes.md`.
+
 **Phase 2 — Tools: ✅ complete** (user-reported: 37 passed).
 - `src/agentbench/tools/`: `base.py` (`Tool` ABC, `ToolError`), `registry.py` (`ToolRegistry`),
   `builtin.py` (`calculator`, `word_count`, `lookup`). Tests: `tests/test_tools.py` (23).
@@ -52,11 +67,15 @@ when its phase begins.
 | Calculator | AST walk, no `eval()` | Security; exponent capped at 100 |
 | Platform layers | Framework → FastAPI → React dashboard | Framework usable alone; UI only displays |
 | Long benchmark runs | API returns a `run_id` at once; dashboard polls | UI never freezes |
+| Budget | ₹0: free tiers + open source only, billing disabled | Learning/portfolio project |
+| LLM errors | One `LLMError` type (with `status_code`) for all providers | Runner catches one thing; 4xx vs 5xx retry policy |
+| Thought signatures | Kept opaque in `ToolRequest.provider_data` | Gemini needs them echoed back; rest of code stays provider-free |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
 - Every file is explained as it is written; commands and git are run manually.
 - Minimal implementation; no unnecessary dependencies.
+- **Zero budget:** free tiers and open-source tools only; never enable paid billing.
 - README separates ✅ Implemented from 🗓️ Planned.
 - Verify with tests before a milestone is done; update this file after each milestone.
 
@@ -64,10 +83,11 @@ when its phase begins.
 - [x] **Phase 0** — Project skeleton, venv, pytest, first commit & push
 - [x] **Phase 1** — Core data models (Pydantic): `Task`, `ToolCall`, `Step`, `Trace`, `RunResult`
 - [x] **Phase 2** — Tools: `Tool` base + registry; 2–3 simple tools
-- [ ] **Phase 3** — LLM layer: `LLMClient`, `FakeLLM`, `GeminiClient`
+- [x] **Phase 3** — LLM layer: `LLMClient`, `FakeLLM`, `GeminiClient`
 - [ ] **Phase 4** — Agent runner: ReAct-style loop, step limit, error handling, tracing
 - [ ] **Phase 5** — Evaluators: exact-match, contains, tool-usage; later LLM-as-judge
-- [ ] **Phase 6** — Benchmark runner: task suites, batch runs, metrics, agent configs + comparison
+- [ ] **Phase 6** — Benchmark runner: task suites, batch runs, metrics, agent configs + comparison;
+  more realistic tools (SQL query over sample SQLite DB, date calculator, unit converter, file reader)
 - [ ] **Phase 7** — Storage: SQLite for runs & traces (adds `run_id`)
 - [ ] **Phase 8** — Failure analysis: categorize failures
 - [ ] **Phase 9** — FastAPI backend: REST API over the framework and database
@@ -78,5 +98,5 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-**Learning stage:** re-teaching the already-built Phase 1 (data models) and Phase 2 (tools)
-concept by concept, with exercises, before starting Phase 3. No new code until the user approves.
+Phase 4 — Agent runner: the loop (LLM → tool → result → repeat), step limit, retries on 429/503
+(not on 401), full trace recording. Built and tested with `FakeLLM`. Waiting for user approval.

@@ -3,7 +3,7 @@
 **An AI Agent Evaluation & Reliability Platform** — run LLM-powered agents on tasks,
 record every step, measure performance, analyze why they fail, and view it all in a dashboard.
 
-> **Status: early development.** Project skeleton, core data models and tools exist today.
+> **Status: early development.** Core data models, tools and the LLM layer (FakeLLM + Gemini) exist today.
 > Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
 
 ## What it will do
@@ -17,7 +17,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **Tracer** | Record every step: prompt, tool call, arguments, result, timing, tokens | 🗓️ Planned |
 | **Evaluator** | Decide whether the task was completed correctly | 🗓️ Planned |
 | **Analyzer** | Categorize failures (wrong tool, bad arguments, loops, wrong answer) | 🗓️ Planned |
-| **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | 🗓️ Planned |
+| **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | ✅ Implemented |
 | **Benchmarks** | Run task suites, compute metrics, compare agent configurations | 🗓️ Planned |
 | **API** | FastAPI REST backend with SQLite storage | 🗓️ Planned |
 | **Dashboard** | React + TypeScript UI for runs, traces and charts | 🗓️ Planned |
@@ -30,12 +30,15 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
   — validated on creation, JSON round-trip tested
 - ✅ Tools (`agentbench.tools`): `Tool` base class, crash-proof `ToolRegistry`, and built-in
   `calculator` (safe, no `eval`), `word_count`, `lookup`
+- ✅ LLM layer (`agentbench.llm`): provider-independent `LLMClient`, `FakeLLM` for offline tests,
+  `GeminiClient` (free tier) with tool calling and token counts
 
 ## Tech stack
 
 - Python 3.11+
 - Pydantic v2 (data models & validation)
 - pytest (testing)
+- Google Gemini API, free tier (`google-genai`), `python-dotenv` — optional extra
 - Planned: SQLite, FastAPI, React + TypeScript + Tailwind CSS + Recharts, Docker
 
 ## Getting started
@@ -48,8 +51,16 @@ python -m venv .venv
 # 2. Install the package in editable mode, with development tools
 python -m pip install -e ".[dev]"
 
-# 3. Run the tests
+# 3. Run the tests (no API key needed)
 pytest
+```
+
+### Optional: real Gemini calls (free tier)
+
+```powershell
+python -m pip install -e ".[dev,gemini]"
+Copy-Item .env.example .env      # then put your free AI Studio key in .env (never commit it)
+python scripts/try_gemini.py     # one real tool-calling round trip
 ```
 
 On macOS/Linux, activate with `source .venv/bin/activate`.

@@ -69,6 +69,9 @@ class Step(_BaseModel):
     llm_output: str = Field(description="What the model said/decided on this turn.")
     tool_call: ToolCall | None = None
     timestamp: datetime = Field(default_factory=_utc_now)
+    # Token usage reported by the LLM for this turn (None if the provider didn't say).
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
 
 
 class Trace(_BaseModel):

@@ -29,6 +29,12 @@ dependencies = [                    # runtime dependencies: installed with the p
 dev = [
     "pytest>=8",
 ]
+# Real Gemini access (Phase 3). Optional, so the core framework stays lightweight:
+#   pip install -e ".[dev,gemini]"
+gemini = [
+    "google-genai>=3.2",            # Google's official Gemini SDK
+    "python-dotenv>=1",             # loads settings (API key) from the .env file
+]
 
 # Tell setuptools our code lives in src/ (the "src layout").
 [tool.setuptools.packages.find]
