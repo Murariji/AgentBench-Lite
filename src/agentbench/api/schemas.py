@@ -67,6 +67,10 @@ class SuiteSummaryOut(BaseModel):
     pass_rate: RateOut
     complete: bool
     stop_reason: str | None
+    # Which task set ran, and is that the whole suite? (added deliberately: contract change 2026-11-13)
+    tasks_fingerprint: str | None    # None = task definitions were not stored: the task set is UNKNOWN
+    registration_status: Literal["matches", "subset", "differs", "unregistered", "unknown"]
+    scope: Literal["full", "subset", "unknown"]   # unknown is NEVER assumed to be "full"
 
 
 class SuitePage(BaseModel):

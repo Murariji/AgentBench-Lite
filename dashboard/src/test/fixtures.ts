@@ -22,7 +22,7 @@ const summary = (o: Partial<Schemas["SuiteSummaryOut"]>): Schemas["SuiteSummaryO
   provider: "gemini", model: "gemini-3.5-flash-lite", repeats: 1, started_at: "2026-11-13T09:34:52.234559Z",
   finished_at: "2026-11-13T09:36:20.558597Z", scheduled_runs: 2, passed: 2, failed: 0, infra_errors: 0, skipped: 0,
   total_llm_calls: 14, pass_rate: { passed: 2, eligible: 2, rate: 1, text: "2/2 (100.0%)" }, complete: true,
-  stop_reason: null, ...o,
+  stop_reason: null, tasks_fingerprint: "0d0389d403dc", registration_status: "subset", scope: "subset", ...o,
 });
 
 export const suitePage = (o: Partial<SuitePage["pagination"]> = {}): SuitePage => ({
@@ -33,9 +33,19 @@ export const suitePage = (o: Partial<SuitePage["pagination"]> = {}): SuitePage =
       config_name: "sloppy-script", model: "scripted-sloppy-v1", scheduled_runs: 10, passed: 1, failed: 1,
       infra_errors: 1, skipped: 7, complete: false, stop_reason: "quota_exhausted in shop-003",
       pass_rate: { passed: 1, eligible: 2, rate: 0.5, text: "1/2 (50.0%)" }, total_llm_calls: 5,
+      tasks_fingerprint: null, registration_status: "unknown", scope: "unknown",     // stored without task definitions
+    }),
+    summary({
+      suite_id: "0af951e0aaaabbbbccccddddeeeeffff", short_id: "0af951e0", suite_name: "shop", scheduled_runs: 30,
+      repeats: 3, tasks_fingerprint: "01031dae7fb1", registration_status: "unregistered", scope: "full",
+      pass_rate: { passed: 30, eligible: 30, rate: 1, text: "30/30 (100.0%)" },
+    }),
+    summary({
+      suite_id: "dddd0000aaaabbbbccccddddeeeeffff", short_id: "dddd0000", tasks_fingerprint: "34c76a170351",
+      registration_status: "differs", scope: "full", kind: "scripted",
     }),
   ],
-  pagination: { limit: 20, offset: 0, total: 2, returned: 2, next_offset: null, ...o },
+  pagination: { limit: 20, offset: 0, total: 4, returned: 4, next_offset: null, ...o },
 });
 
 const runSummary = (o: Partial<Schemas["RunSummaryOut"]>): Schemas["RunSummaryOut"] => ({

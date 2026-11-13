@@ -27,6 +27,20 @@ export function OutcomeBadge({ outcome }: { outcome: string }) {
   return <Badge color="slate">{outcome}</Badge>;
 }
 
+/** Did the run cover its whole suite? Shown as the API reports it; "unknown" is never shown as full. */
+export function ScopeBadge({ scope, registration }: { scope: string; registration: string }) {
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {scope === "subset" && <Badge color="amber" title="Only some of the suite's tasks: not a full-suite result">SUBSET</Badge>}
+      {scope === "full" && <Badge color="slate">full suite</Badge>}
+      {scope === "unknown" && <Badge color="slate" title="Task definitions were not stored">task set unknown</Badge>}
+      {registration === "matches" && <Badge color="green" title="Matches its pre-registration">registered ✓</Badge>}
+      {registration === "subset" && <Badge color="green" title="Each task matches its registered definition">registered ✓</Badge>}
+      {registration === "differs" && <Badge color="red" title="Not the registered benchmark">DIFFERS from registration</Badge>}
+    </span>
+  );
+}
+
 export function CompleteBadge({ complete }: { complete: boolean }) {
   return complete ? <Badge color="green">complete</Badge> : <Badge color="amber">INCOMPLETE</Badge>;
 }

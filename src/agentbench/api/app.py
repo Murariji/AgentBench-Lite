@@ -39,7 +39,7 @@ from agentbench.report import RESULTS_DIR
 from agentbench.runs import RunPlan, RunRequestError, gemini_client, gemini_config, plan_run, redact, scripted_parts
 from agentbench.measurement import MEASURE_LIMITATIONS, measure_task
 from agentbench.metrics import compute_metrics
-from agentbench.models import SuiteResult
+from agentbench.models import SuiteResult, tasks_fingerprint
 from agentbench.registration import check_suite, registrations_for
 from agentbench.report import CONFIG_DIMENSIONS, FAIRNESS_DIMENSIONS, comparison_conclusions
 from agentbench.storage import (DEFAULT_RESULTS_DB, SCHEMA_VERSION, AmbiguousSuiteIdError, ResultStore,
@@ -159,6 +159,35 @@ def _registration(suite: SuiteResult) -> RegistrationOut:
                            version=r.get("version"), suite_fingerprint=r.get("suite_fingerprint"))
 
 
+def run_identity(suite_name: str, task_ids: list[str], tasks: list, tools, dataset) -> dict:
+    """tasks_fingerprint, registration_status and scope of one stored run - honestly:
+    without stored task definitions everything is "unknown" (never assumed to be a full-suite run).
+
+      registered suite   -> registration guard: matches = full, subset = subset; differs: scope from the
+                            task ids against the newest registration (the definitions differ either way)
+      unregistered suite -> scope from the run's task ids against the suite's current task list
+    """
+    if not tasks:
+        return {"tasks_fingerprint": None, "registration_status": "unknown", "scope": "unknown"}
+    guard = check_suite(suite_name, tasks, tools, dataset)
+    if guard.status in ("matches", "subset"):
+        scope = "full" if guard.status == "matches" else "subset"
+    else:
+        if guard.status == "differs":
+            reference = [t["id"] for t in guard.registration["tasks"]]
+        else:
+            reference = [t.id for t in SUITES.get(suite_name, [])]
+        if not reference:
+            scope = "unknown"                                  # a suite this code does not know
+        elif task_ids == reference:
+            scope = "full"
+        elif set(task_ids) < set(reference):
+            scope = "subset"
+        else:
+            scope = "unknown"                                  # tasks the current suite does not contain
+    return {"tasks_fingerprint": tasks_fingerprint(tasks), "registration_status": guard.status, "scope": scope}
+
+
 def _known_task(store: ResultStore, task_id: str) -> None:
     in_suites = any(t.id == task_id for tasks in SUITES.values() for t in tasks)
     if not in_suites and not store.task_history(task_id):
@@ -264,8 +293,9 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
         rows, pagination = _paginate(store.list_suites(real_only=real_only), limit, offset)
         items = [SuiteSummaryOut(
             **row.model_dump(), short_id=row.suite_id[:8], kind=_kind(row.provider),
-            pass_rate=_rate(row.passed, row.passed + row.failed, str(row.pass_rate)), complete=row.complete)
-            for row in rows]
+            pass_rate=_rate(row.passed, row.passed + row.failed, str(row.pass_rate)), complete=row.complete,
+            **run_identity(row.suite_name, *store.suite_identity(row.suite_id)))
+            for row in rows]                                  # computed for THIS page only (<= 100 runs)
         return SuitePage(items=items, pagination=pagination)
 
     @app.get("/suites/{suite_id}", response_model=SuiteDetailOut, responses=errors(404, 409, 422, 503),

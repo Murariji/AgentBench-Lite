@@ -438,6 +438,19 @@ class ResultStore:
     def exists(self, suite_id: str) -> bool:
         return self._conn.execute("SELECT 1 FROM suite_runs WHERE suite_id = ?", (suite_id,)).fetchone() is not None
 
+    def suite_identity(self, suite_id: str) -> tuple[list[str], list[Task], list[ToolSpec] | None, str | None]:
+        """(scheduled task ids, stored task definitions, tool snapshot, dataset) - without loading traces.
+        Task definitions can be [] for results stored without them; tools None = not recorded."""
+        row = self._conn.execute("SELECT dataset FROM suite_runs WHERE suite_id = ?", (suite_id,)).fetchone()
+        if row is None:
+            raise SuiteNotFoundError(f"no suite with id {suite_id!r}")
+        scheduled = self._conn.execute(
+            "SELECT st.task_id, tv.definition_json FROM suite_tasks st"
+            " LEFT JOIN task_versions tv ON tv.task_hash = st.task_hash"
+            " WHERE st.suite_id = ? ORDER BY st.position", (suite_id,)).fetchall()
+        tasks = [Task.model_validate_json(r["definition_json"]) for r in scheduled if r["definition_json"]]
+        return [r["task_id"] for r in scheduled], tasks, self.suite_tools(suite_id), row["dataset"]
+
     def load(self, suite_id: str) -> SuiteResult:
         row = self._conn.execute("SELECT * FROM suite_runs WHERE suite_id = ?", (suite_id,)).fetchone()
         if row is None:

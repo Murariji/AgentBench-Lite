@@ -17,7 +17,7 @@ describe("Runs page", () => {
     open("/");
     const table = await screen.findByRole("table");
     const rows = within(table).getAllByRole("row");
-    expect(rows).toHaveLength(3); // header + 2 runs
+    expect(rows).toHaveLength(5); // header + 4 runs
     expect(rows[1]).toHaveTextContent("f8e7c26f");
     expect(rows[1]).toHaveTextContent("REAL LLM");
     expect(rows[1]).toHaveTextContent("2/2 (100.0%)"); // the server's own text, not recomputed
@@ -27,17 +27,30 @@ describe("Runs page", () => {
     expect(rows[2]).toHaveTextContent("1 infra, 7 skipped");
   });
 
+  it("marks subset, full, unknown and differing runs as the API reports them", async () => {
+    fakeFetch({ "/suites?limit=20&offset=0": { body: suitePage() } });
+    open("/");
+    const rows = within(await screen.findByRole("table")).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("SUBSET");            // the 2-task pilot: not a full-suite score
+    expect(rows[1]).toHaveTextContent("registered ✓");
+    expect(rows[2]).toHaveTextContent("task set unknown");  // never shown as a full run
+    expect(rows[2]).not.toHaveTextContent("full suite");
+    expect(rows[3]).toHaveTextContent("full suite");
+    expect(rows[3]).not.toHaveTextContent("SUBSET");
+    expect(rows[4]).toHaveTextContent("DIFFERS from registration");
+  });
+
   it("pages with the server's limit/offset and keeps the page in the URL", async () => {
     const { calls } = fakeFetch({
       "/suites?limit=20&offset=0": { body: suitePage({ total: 25, next_offset: 20 }) },
-      "/suites?limit=20&offset=20": { body: suitePage({ offset: 20, total: 25, returned: 2, next_offset: null }) },
+      "/suites?limit=20&offset=20": { body: suitePage({ offset: 20, total: 25, returned: 4, next_offset: null }) },
     });
     open("/");
     fireEvent.click(await screen.findByRole("button", { name: "Next" }));
-    expect(await screen.findByText("21–22 of 25")).toBeInTheDocument();
+    expect(await screen.findByText("21–24 of 25")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled(); // next_offset: null = last page
     fireEvent.click(screen.getByRole("button", { name: "Previous" }));
-    expect(await screen.findByText("1–2 of 25")).toBeInTheDocument();
+    expect(await screen.findByText("1–4 of 25")).toBeInTheDocument();
     expect(calls).toEqual(["/suites?limit=20&offset=0", "/suites?limit=20&offset=20", "/suites?limit=20&offset=0"]);
   });
 

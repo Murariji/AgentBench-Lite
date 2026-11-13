@@ -20,7 +20,7 @@ python scripts/serve_api.py                 # http://127.0.0.1:8000  -  interact
 | `GET /` | name, version, links | 200 | 500 |
 | `GET /health` | status, schema version, real runs enabled? | 200 | 503 |
 | `GET /registrations` | pre-registered suites (shop-hard v1) | 200 | |
-| `GET /suites?real_only&limit&offset` | stored runs, newest first, paginated | 200 | 422, 503 |
+| `GET /suites?real_only&limit&offset` | stored runs, newest first, paginated; each with `tasks_fingerprint`, `registration_status`, `scope` (full / subset / unknown) | 200 | 422, 503 |
 | `GET /suites/{suite_id}` | one run: config, fingerprints, metrics, registration, run summaries | 200 | 404, 409, 422, 503 |
 | `GET /suites/{suite_id}/runs/{run_id}` | one task run: full trace, checks, failure analysis | 200 | 404, 409, 422, 503 |
 | `GET /suites/{suite_id}/failures` | failure categories, evidence, near misses | 200 | 404, 409, 422, 503 |
@@ -51,6 +51,13 @@ secret). Short ids (≥ 4 characters, like a git commit) work for suites, runs a
 | 422 | `validation_error`, `confirmation_required`, `budget_required`, `budget_too_high` | invalid input |
 | 500 | `internal_error` | unexpected error |
 | 503 | `storage_unavailable` | the results database cannot be used |
+
+## Is a run a full-suite result? (`scope`)
+
+Each item of `GET /suites` says which task set ran and whether it was the whole suite:
+`tasks_fingerprint` (null = task definitions were not stored), `registration_status` (matches, subset,
+differs, unregistered, unknown) and `scope`: `full`, `subset` (only some of the suite's tasks — its pass
+rate is not a full-suite score), or `unknown` (not enough stored information — never assumed to be full).
 
 ## Pagination
 
@@ -186,3 +193,10 @@ python scripts/update_api_contract.py --write --reason "why it changes"       # 
 - added schema ToolCall
 - added schema ToolSpec
 - added schema Trace
+
+### 2026-11-13 — GET /suites items gain tasks_fingerprint, registration_status and scope, so the dashboard can tell subset runs from full-suite runs (e.g. the 2-task shop-hard pilot, the shop-010 measurement); unknown task sets are reported as unknown, never as full
+
+- added field SuiteSummaryOut.registration_status (enum(matches,subset,differs,unregistered,unknown))
+- added field SuiteSummaryOut.scope (enum(full,subset,unknown))
+- added field SuiteSummaryOut.tasks_fingerprint (null|string)
+- CHANGED required fields of SuiteSummaryOut: ['complete', 'config_name', 'failed', 'finished_at', 'infra_errors', 'kind', 'model', 'pass_rate', 'passed', 'provider', 'repeats', 'scheduled_runs', 'short_id', 'skipped', 'started_at', 'stop_reason', 'suite_id', 'suite_name', 'total_llm_calls'] -> ['complete', 'config_name', 'failed', 'finished_at', 'infra_errors', 'kind', 'model', 'pass_rate', 'passed', 'provider', 'registration_status', 'repeats', 'scheduled_runs', 'scope', 'short_id', 'skipped', 'started_at', 'stop_reason', 'suite_id', 'suite_name', 'tasks_fingerprint', 'total_llm_calls']

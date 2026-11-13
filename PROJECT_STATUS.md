@@ -19,6 +19,24 @@ when its phase begins.
 check clean, build OK; Python: 701 passed — when run by Claude; user to confirm). Step 10.3 (failures,
 compare, task history + charts) waits for approval AND the subset decision (A or B) for the chart.
 
+**Contract change (user-approved option B): subset vs full-suite runs in GET /suites ✅** (Python: 714 passed;
+dashboard: 21 passed; build OK — when run by Claude; user to confirm).
+- `SuiteSummaryOut` gains `tasks_fingerprint` (null = task definitions not stored), `registration_status`
+  (matches | subset | differs | unregistered | unknown) and `scope` (full | subset | unknown). `scope` was
+  added beyond the two requested fields because registration alone cannot mark subsets of UNREGISTERED
+  suites (e.g. the shop-010 measurement run 42daa8df); explained to the user.
+- Rules (`api.app.run_identity`): no stored task definitions → unknown / unknown (never assumed full);
+  registered suites → the registration guard (matches = full, subset = subset; differs → task ids vs the
+  registration); unregistered → task ids vs the suite's current task list; unknown suite or foreign tasks →
+  unknown. Computed for the requested page only, via the new read-only `ResultStore.suite_identity()`
+  (no traces loaded; no schema change).
+- Real data (copy): pilot f8e7c26f subset/subset; 42daa8df unregistered/subset; full runs full.
+- Deliberate: `update_api_contract.py --write --reason …` (4 changes, logged in docs/api.md);
+  `export_openapi.py` + `npm run gen:types`; the old fixtures then failed to COMPILE until updated.
+- Runs page: Scope column (SUBSET / full suite / task set unknown, registered ✓ / DIFFERS from registration).
+- Tests: `tests/test_api_run_identity.py` (8 status/scope cases incl. differs-subset, unknown suite, no task
+  definitions; fingerprints; historical v1 runs; light read = full load) + 1 dashboard test.
+
 **Step 10.2 Runs, run details, trace viewer: ✅ complete.**
 - React Router 6.28.0 (the only new package). Routes: `/` runs, `/suites/:suiteId` details,
   `/suites/:suiteId/runs/:runId` trace, `/connection`, and a not-found page.
@@ -617,6 +635,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 10, Step 10.3 — failures page, compare page, task history + measure, charts (Recharts). Waiting for approval, and for the subset decision: (A) fetch /suites/{id} per chart point, or (B) add tasks_fingerprint + registration_status to SuiteSummaryOut via update_api_contract.py --reason. In parallel: A.4 Stage 2.
+Phase 10, Step 10.3 — failures page, compare page, task history + measure, charts (Recharts); the pass-rate chart must mark or separate scope=subset/unknown points. Waiting for approval. In parallel: A.4 Stage 2.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

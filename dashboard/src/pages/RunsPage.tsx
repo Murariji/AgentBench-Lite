@@ -3,7 +3,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { api, PAGE_SIZE } from "../api/client";
 import { useApi } from "../api/useApi";
-import { CompleteBadge, KindBadge, Loaded } from "../components/ui";
+import { CompleteBadge, KindBadge, Loaded, ScopeBadge } from "../components/ui";
 import { utc } from "../format";
 
 export function RunsPage() {
@@ -45,6 +45,7 @@ export function RunsPage() {
                     <tr>
                       <th className="px-3 py-2">Run</th><th className="px-3 py-2">Started</th>
                       <th className="px-3 py-2">Agent</th><th className="px-3 py-2">Suite</th>
+                      <th className="px-3 py-2">Scope</th>
                       <th className="px-3 py-2">Scheduled</th><th className="px-3 py-2">Pass rate</th>
                       <th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right">Requests</th>
                     </tr>
@@ -58,6 +59,7 @@ export function RunsPage() {
                         <td className="px-3 py-2 whitespace-nowrap">{utc(s.started_at)}</td>
                         <td className="px-3 py-2"><KindBadge kind={s.kind} /> <span className="ml-1">{s.model}</span></td>
                         <td className="px-3 py-2">{s.suite_name}</td>
+                        <td className="px-3 py-2"><ScopeBadge scope={s.scope} registration={s.registration_status} /></td>
                         <td className="px-3 py-2">{s.scheduled_runs} run(s), ×{s.repeats}</td>
                         <td className="px-3 py-2 font-medium">{s.pass_rate.text}</td>
                         <td className="px-3 py-2">
@@ -91,8 +93,9 @@ export function RunsPage() {
         }
       </Loaded>
       <p className="text-xs text-slate-500">
-        SCRIPTED = fixed answers written in advance to test the framework (not AI). INCOMPLETE = some runs were not
-        executed or hit infrastructure errors (quota, budget, network); those are never counted as wrong answers.
+        SCRIPTED = fixed answers written in advance to test the framework (not AI). SUBSET = only some of the suite's
+        tasks ran, so its pass rate is not a full-suite score. INCOMPLETE = some runs were not executed or hit
+        infrastructure errors (quota, budget, network); those are never counted as wrong answers.
       </p>
     </div>
   );

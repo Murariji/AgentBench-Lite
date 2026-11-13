@@ -2119,6 +2119,17 @@
       "title": "Provider",
       "type": "string"
      },
+     "registration_status": {
+      "enum": [
+       "matches",
+       "subset",
+       "differs",
+       "unregistered",
+       "unknown"
+      ],
+      "title": "Registration Status",
+      "type": "string"
+     },
      "repeats": {
       "title": "Repeats",
       "type": "integer"
@@ -2126,6 +2137,15 @@
      "scheduled_runs": {
       "title": "Scheduled Runs",
       "type": "integer"
+     },
+     "scope": {
+      "enum": [
+       "full",
+       "subset",
+       "unknown"
+      ],
+      "title": "Scope",
+      "type": "string"
      },
      "short_id": {
       "title": "Short Id",
@@ -2159,6 +2179,17 @@
       "title": "Suite Name",
       "type": "string"
      },
+     "tasks_fingerprint": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tasks Fingerprint"
+     },
      "total_llm_calls": {
       "title": "Total Llm Calls",
       "type": "integer"
@@ -2183,7 +2214,10 @@
      "total_llm_calls",
      "pass_rate",
      "complete",
-     "stop_reason"
+     "stop_reason",
+     "tasks_fingerprint",
+     "registration_status",
+     "scope"
     ],
     "title": "SuiteSummaryOut",
     "type": "object"

@@ -942,10 +942,20 @@ export interface components {
             passed: number;
             /** Provider */
             provider: string;
+            /**
+             * Registration Status
+             * @enum {string}
+             */
+            registration_status: "matches" | "subset" | "differs" | "unregistered" | "unknown";
             /** Repeats */
             repeats: number;
             /** Scheduled Runs */
             scheduled_runs: number;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "full" | "subset" | "unknown";
             /** Short Id */
             short_id: string;
             /** Skipped */
@@ -961,6 +971,8 @@ export interface components {
             suite_id: string;
             /** Suite Name */
             suite_name: string;
+            /** Tasks Fingerprint */
+            tasks_fingerprint: string | null;
             /** Total Llm Calls */
             total_llm_calls: number;
         };
