@@ -19,6 +19,14 @@ from agentbench.models import RunRecord, SuiteResult
 from agentbench.storage import ResultStore
 
 UNKNOWN = "unknown"
+# Always shown with a measurement (CLI and API), after the sample-size line.
+MEASURE_LIMITATIONS = [
+    "'unknown' = tools were not recorded for those runs; they are not assumed to be any version.",
+    "Compare only columns of the SAME agent; scripted columns follow a fixed script (not AI).",
+    "A tools change can bundle behaviour AND description changes; the effect is their combination.",
+    "Runs on different days can differ for reasons outside our control (the provider's model).",
+    "Infrastructure errors and skipped runs are excluded from correctness and averages.",
+]
 
 
 @dataclass
@@ -121,10 +129,6 @@ def format_measurement(task_id: str, groups: list[ToolGroupStats]) -> str:
         "LIMITATIONS - read before drawing conclusions:",
         f"  * Tiny samples ({', '.join(f'{g.eligible} evaluated' for g in groups)}): exploratory evidence, "
         "not statistical proof.",
-        "  * 'unknown' = tools were not recorded for those runs; they are not assumed to be any version.",
-        "  * Compare only columns of the SAME agent; scripted columns follow a fixed script (not AI).",
-        "  * A tools change can bundle behaviour AND description changes; the effect is their combination.",
-        "  * Runs on different days can differ for reasons outside our control (the provider's model).",
-        "  * Infrastructure errors and skipped runs are excluded from correctness and averages.",
+        *(f"  * {text}" for text in MEASURE_LIMITATIONS),
     ]
     return "\n".join(lines)

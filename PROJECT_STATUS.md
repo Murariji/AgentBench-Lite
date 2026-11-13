@@ -15,6 +15,23 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 9 — FastAPI backend: 🔶 in progress. Step 9.1 read-only API ✅** (tests: 622 passed, 0 failed,
+0 skipped when run by Claude; 42 new — user to confirm). 9.2 (background scripted runs + real-run gates)
+waits for approval. A.4 Stage 2 can still be run by the user at any time (the guard protects it).
+- Dependencies: optional extra `api` = fastapi>=0.110, uvicorn>=0.29; dev + httpx>=0.27 (installed:
+  fastapi 0.162.5, uvicorn 0.54.0, httpx 0.28.1). The core framework never imports FastAPI (tested).
+- `src/agentbench/api/` — `create_app(db_path)`, `schemas.py`. Endpoints: /health, /registrations,
+  /suites (limit 1–100, offset ≥ 0, pagination metadata), /suites/{id}, /suites/{id}/runs/{run_id},
+  /suites/{id}/failures, /tasks/{id}/history (paginated), /tasks/{id}/measure, /compare?ids=…(2–5).
+- One error shape `{"error": {code, message, details}}`: 404 not_found, 405 method_not_allowed,
+  409 ambiguous_id / incompatible_comparison (different suites) / not_analysable, 422 validation_error,
+  503 storage_unavailable. Ids validated by pattern (suite ids ≥ 4 characters).
+- One ResultStore (SQLite connection) per request via dependency injection.
+- `scripts/serve_api.py`: always 127.0.0.1 (no --host option); verified listening on 127.0.0.1 only.
+- Framework changes without behaviour change: `report.comparison_conclusions()` (data + the same text),
+  `storage.AmbiguousSuiteIdError` (subclass), `measurement.MEASURE_LIMITATIONS`. No schema change.
+- Notes: `docs/learning/phase-9-notes.md`.
+
 **A.4 Stage 1 pilot (user ran it): shop-hard v1 SUBSET, hard-001 + hard-007, 1 repeat — 2/2 passed,
 COMPLETE, 14 requests (cap 25), 0 retries.** Suite f8e7c26f, 2026-11-13 09:34 UTC, gemini-3.5-flash-lite (as
 requested), config dfba9fdfb262, tools c1af5a87019e, dataset 62143ef0c309; both tasks matched their registered
@@ -511,6 +528,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Benchmark v2, Step A.4 Stage 2 — all 9 shop-hard tasks, 1 repeat, hard cap 100 (realistic ~63–81). NOT approved yet: waits for the user's explicit approval after reviewing the Stage 1 pilot. Stage 3 (repeats) not decided.
+Phase 9, Step 9.2 — background SCRIPTED runs (POST /runs → 202 + job id, GET /runs/{job_id}), POST /estimates, one run at a time, real runs only with --allow-real-runs + confirm + budget cap + guard. Waiting for approval. In parallel, any time: A.4 Stage 2 (user-started; 9 tasks, cap 100).
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

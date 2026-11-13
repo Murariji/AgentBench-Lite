@@ -81,6 +81,14 @@ Evaluators decide **whether it was right** (`EvaluationResult`, list of `Check`s
 3. **Deterministic tests.** Unit tests use `FakeLLM`; no network or API key required.
 4. **Minimal dependencies.** Add a library only when a phase needs it.
 
+## Web API (Phase 9)
+
+`src/agentbench/api/` is a thin layer: every endpoint calls existing framework functions and returns their
+Pydantic models as JSON. One `ResultStore` per request (dependency injection); one error shape; pagination
+on lists; local only (127.0.0.1). Step 9.1 is read-only. Planned 9.2: background scripted runs via
+`POST /runs` (202 + job id, job status in memory, results in SQLite); real runs only when the server is
+started with `--allow-real-runs` and the request passes confirm + budget cap + registration guard.
+
 ## Result storage (Phase 7)
 
 Two separate SQLite files, both git-ignored:

@@ -196,6 +196,10 @@ class SuiteNotFoundError(StorageError):
     pass
 
 
+class AmbiguousSuiteIdError(SuiteNotFoundError):
+    """A short id matches more than one suite (a subclass, so existing callers still catch it)."""
+
+
 class SchemaVersionError(StorageError):
     pass
 
@@ -482,7 +486,7 @@ class ResultStore:
         if not rows:
             raise SuiteNotFoundError(f"no suite id starts with {prefix!r}")
         if len(rows) > 1:
-            raise SuiteNotFoundError(f"{prefix!r} matches {len(rows)} suites - type more characters")
+            raise AmbiguousSuiteIdError(f"{prefix!r} matches {len(rows)} suites - type more characters")
         return rows[0]["suite_id"]
 
     # ---------- queries (what the dashboard will ask) ------------------------------------

@@ -255,6 +255,17 @@ def compare(suites: list[SuiteResult]) -> str:
     lines.append("")
 
     # Honest conclusions about what the comparison can and cannot show.
+    lines += comparison_conclusions(suites, metrics)["lines"]
+    return "\n".join(lines)
+
+
+def comparison_conclusions(suites: list[SuiteResult], metrics: list[SuiteMetrics] | None = None) -> dict:
+    """What a comparison can and cannot show - as DATA (the API) and as text lines (the CLI report).
+
+    Returns {"fair", "unfair_dimensions", "changed_dimensions", "tools_status", "lines"}.
+    """
+    metrics = metrics or [compute_metrics(s) for s in suites]
+    lines: list[str] = []
     unfair = [label for label, get in FAIRNESS_DIMENSIONS.items() if len({str(get(s)) for s in suites}) > 1]
     changed = [label for label, get in CONFIG_DIMENSIONS.items()
                if label != TOOLS_DIMENSION and len({str(get(s)) for s in suites}) > 1]
@@ -290,7 +301,8 @@ def compare(suites: list[SuiteResult]) -> str:
                      "experiments; the provider's model behind the same id may have changed.")
     if any(s.config.is_scripted for s in suites):
         lines.append("NOTE: scripted agents only test the framework; their scores say nothing about AI ability.")
-    return "\n".join(lines)
+    return {"fair": not unfair, "unfair_dimensions": unfair, "changed_dimensions": changed,
+            "tools_status": tools_status, "lines": lines}
 
 
 # ---------- JSON export -----------------------------------------------------------

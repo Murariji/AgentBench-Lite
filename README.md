@@ -22,7 +22,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | ✅ Implemented |
 | **Benchmarks** | Run task suites, compute metrics, compare agent configurations, free-tier safety | ✅ Implemented |
 | **Storage** | SQLite history of every run, trace and check; queries and a results CLI | ✅ Implemented |
-| **API** | FastAPI REST backend over the framework and storage | 🗓️ Planned |
+| **API** | FastAPI REST backend over the framework and storage | 🔶 Read-only endpoints implemented |
 | **Dashboard** | React + TypeScript UI for runs, traces and charts | 🗓️ Planned |
 
 ## Implemented so far
@@ -233,6 +233,19 @@ are agent mistakes, which is exactly what the benchmark measures.
 python scripts/build_shop_db.py   # builds data/shop.db (refuses to overwrite; --rebuild to replace)
 ```
 
+## Web API (read-only, local)
+
+```powershell
+python -m pip install -e ".[dev,api]"
+python scripts/serve_api.py                      # http://127.0.0.1:8000/docs  (interactive docs)
+```
+
+`GET /suites`, `/suites/{id}`, `/suites/{id}/runs/{run_id}`, `/suites/{id}/failures`,
+`/tasks/{task_id}/history`, `/tasks/{task_id}/measure`, `/compare?ids=a&ids=b`, `/registrations`,
+`/health`. Paginated lists, short ids, one error format (`{"error": {"code", "message", "details"}}`).
+Local only (127.0.0.1), no login, nothing can be changed or started yet. The framework itself does not
+need FastAPI.
+
 ## Tech stack
 
 - Python 3.11+
@@ -241,7 +254,8 @@ python scripts/build_shop_db.py   # builds data/shop.db (refuses to overwrite; -
 - SQLite (Python's built-in `sqlite3`) for the benchmark database
 - Google Gemini API, free tier (`google-genai`), `python-dotenv` — optional extra
 - SQLite (built-in `sqlite3`) for stored results, `data/results.db`
-- Planned: FastAPI, React + TypeScript + Tailwind CSS + Recharts, Docker
+- FastAPI + Uvicorn (optional `api` extra) for the local read-only API; httpx for its tests
+- Planned: React + TypeScript + Tailwind CSS + Recharts, Docker
 
 ## Getting started
 

@@ -1,0 +1,259 @@
+"""AgentBench-Lite web API - Phase 9.1: READ-ONLY endpoints over stored results.
+
+    app = create_app("data/results.db")       # served on 127.0.0.1 by scripts/serve_api.py
+
+Rules:
+  * No agent or evaluation logic lives here: every endpoint calls the existing framework
+    (ResultStore, compute_metrics, analyze_suite, measure_task, comparison_conclusions, check_suite).
+  * Each request gets its OWN ResultStore (SQLite connection) through dependency injection,
+    opened for that request and closed after it - connections are never shared between threads.
+  * Every error has one shape: {"error": {"code", "message", "details"}}.
+  * GET endpoints never change anything. Nothing here calls an LLM.
+"""
+
+from collections.abc import Iterator
+from pathlib import Path as FilePath
+
+from fastapi import Depends, FastAPI, Path, Query, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from agentbench.analysis import analyze_run, analyze_suite
+from agentbench.api.schemas import (CompareOut, ErrorResponse, FailuresOut, HealthOut, HistoryPage,
+                                    MeasureGroupOut, MeasureOut, Pagination, RateOut, RegisteredSuiteOut,
+                                    RegistrationOut, RunDetailOut, RunSummaryOut, SuiteDetailOut, SuitePage,
+                                    SuiteSummaryOut, TaskOutcomesOut)
+from agentbench.measurement import MEASURE_LIMITATIONS, measure_task
+from agentbench.metrics import compute_metrics
+from agentbench.models import SuiteResult
+from agentbench.registration import check_suite, registrations_for
+from agentbench.report import CONFIG_DIMENSIONS, FAIRNESS_DIMENSIONS, comparison_conclusions
+from agentbench.storage import (DEFAULT_RESULTS_DB, SCHEMA_VERSION, AmbiguousSuiteIdError, ResultStore,
+                                StorageError, SuiteNotFoundError)
+from agentbench.suites import SUITES
+
+# Ids in URLs: letters, digits, '-' and '_' only. Suite ids may be shortened, but to at least 4 characters.
+SUITE_ID = r"^[0-9A-Za-z_-]{4,64}$"
+TASK_ID = r"^[0-9A-Za-z_.-]{1,64}$"
+MAX_LIMIT = 100
+MAX_COMPARE = 5
+ERRORS = {404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}, 422: {"model": ErrorResponse}}
+
+
+class ApiError(Exception):
+    """Raised by endpoints; turned into {"error": {...}} with the given HTTP status code."""
+
+    def __init__(self, status: int, code: str, message: str, details=None) -> None:
+        super().__init__(message)
+        self.status, self.code, self.message, self.details = status, code, message, details
+
+
+def _error(status: int, code: str, message: str, details=None) -> JSONResponse:
+    body = {"error": {"code": code, "message": message, "details": jsonable_encoder(details)}}
+    return JSONResponse(status_code=status, content=body)
+
+
+def _paginate(items: list, limit: int, offset: int) -> tuple[list, Pagination]:
+    page = items[offset:offset + limit]
+    nxt = offset + limit if offset + limit < len(items) else None
+    return page, Pagination(limit=limit, offset=offset, total=len(items), returned=len(page), next_offset=nxt)
+
+
+def _kind(provider: str) -> str:
+    return "scripted" if provider == "fake" else "real"
+
+
+def _rate(passed: int, eligible: int, text: str) -> RateOut:
+    return RateOut(passed=passed, eligible=eligible, rate=passed / eligible if eligible else None, text=text)
+
+
+def _registration(suite: SuiteResult) -> RegistrationOut:
+    if not suite.tasks:
+        return RegistrationOut(status="unknown", line="cannot verify (no task definitions stored)",
+                               problems=[], notes=["no task definitions stored"])
+    g = check_suite(suite.suite_name, suite.tasks, suite.tools, suite.dataset)
+    r = g.registration or {}
+    return RegistrationOut(status=g.status, line=g.line(), problems=g.problems, notes=g.notes,
+                           version=r.get("version"), suite_fingerprint=r.get("suite_fingerprint"))
+
+
+def _known_task(store: ResultStore, task_id: str) -> None:
+    in_suites = any(t.id == task_id for tasks in SUITES.values() for t in tasks)
+    if not in_suites and not store.task_history(task_id):
+        raise ApiError(404, "not_found", f"unknown task {task_id!r}",
+                       {"known_suites": {name: [t.id for t in tasks] for name, tasks in SUITES.items()}})
+
+
+def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB) -> FastAPI:
+    app = FastAPI(
+        title="AgentBench-Lite API",
+        version="0.9.1",
+        description="Read-only access to stored benchmark runs, traces, failure analysis and comparisons. "
+                    "Scripted runs are fixed test fixtures, not AI. Local use only (127.0.0.1).",
+    )
+    app.state.db_path = FilePath(db_path)
+
+    # ---------- dependency injection: one ResultStore per request ----------------------------
+    def get_store() -> Iterator[ResultStore]:
+        store = ResultStore(app.state.db_path)
+        try:
+            yield store
+        finally:
+            store.close()
+
+    def load_suite(store: ResultStore, suite_id: str) -> SuiteResult:
+        try:
+            return store.load(store.resolve(suite_id))
+        except AmbiguousSuiteIdError as exc:
+            raise ApiError(409, "ambiguous_id", str(exc), {"suite_id": suite_id}) from None
+        except SuiteNotFoundError as exc:
+            raise ApiError(404, "not_found", str(exc), {"suite_id": suite_id}) from None
+
+    # ---------- one error shape for everything ---------------------------------------------------
+    @app.exception_handler(ApiError)
+    async def _api_error(request: Request, exc: ApiError):
+        return _error(exc.status, exc.code, exc.message, exc.details)
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_error(request: Request, exc: RequestValidationError):
+        return _error(422, "validation_error", "the request is invalid", exc.errors())
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http_error(request: Request, exc: StarletteHTTPException):
+        code = {404: "not_found", 405: "method_not_allowed"}.get(exc.status_code, "http_error")
+        return _error(exc.status_code, code, str(exc.detail))
+
+    @app.exception_handler(StorageError)
+    async def _storage_error(request: Request, exc: StorageError):
+        return _error(503, "storage_unavailable", str(exc))
+
+    # ---------- endpoints ------------------------------------------------------------------------
+    @app.get("/health", response_model=HealthOut, tags=["meta"])
+    def health(store: ResultStore = Depends(get_store)) -> HealthOut:
+        return HealthOut(status="ok", schema_version=SCHEMA_VERSION, real_runs_enabled=False)
+
+    @app.get("/registrations", response_model=list[RegisteredSuiteOut], tags=["meta"])
+    def registrations() -> list[RegisteredSuiteOut]:
+        return [RegisteredSuiteOut(**{k: r.get(k) for k in RegisteredSuiteOut.model_fields if k != "tasks"},
+                                   tasks=[t["id"] for t in r["tasks"]])
+                for name in SUITES for r in registrations_for(name)]
+
+    @app.get("/suites", response_model=SuitePage, tags=["suites"])
+    def list_suites(real_only: bool = False,
+                    limit: int = Query(20, ge=1, le=MAX_LIMIT), offset: int = Query(0, ge=0),
+                    store: ResultStore = Depends(get_store)) -> SuitePage:
+        rows, pagination = _paginate(store.list_suites(real_only=real_only), limit, offset)
+        items = [SuiteSummaryOut(
+            **row.model_dump(), short_id=row.suite_id[:8], kind=_kind(row.provider),
+            pass_rate=_rate(row.passed, row.passed + row.failed, str(row.pass_rate)), complete=row.complete)
+            for row in rows]
+        return SuitePage(items=items, pagination=pagination)
+
+    @app.get("/suites/{suite_id}", response_model=SuiteDetailOut, responses=ERRORS, tags=["suites"])
+    def get_suite(suite_id: str = Path(pattern=SUITE_ID),
+                  store: ResultStore = Depends(get_store)) -> SuiteDetailOut:
+        s = load_suite(store, suite_id)
+        m = compute_metrics(s)
+        runs = [RunSummaryOut(
+            run_id=r.run.run_id, task_id=r.task_id, repeat=r.repeat, difficulty=r.difficulty, outcome=r.outcome,
+            status=r.run.status, final_answer=r.run.final_answer, steps=len(r.run.trace.steps),
+            llm_calls=r.run.llm_calls, retries=None if r.run.retries is None else len(r.run.retries),
+            duration_seconds=r.run.duration_seconds, error_kind=r.run.error_kind,
+            failed_checks=[c.name for c in r.evaluation.checks if not c.passed] if r.evaluation else [])
+            for r in s.records]
+        return SuiteDetailOut(
+            suite_id=s.suite_id, suite_name=s.suite_name, kind=_kind(s.config.provider), config=s.config,
+            config_fingerprint=s.config.config_fingerprint, repeats=s.repeats, started_at=s.started_at,
+            finished_at=s.finished_at, dataset=s.dataset, tools=s.tools, tools_fingerprint=s.tools_fingerprint,
+            tasks_fingerprint=s.tasks_fingerprint, request_budget=s.request_budget,
+            estimated_requests=s.estimated_requests, stop_reason=s.stop_reason, complete=m.complete, metrics=m,
+            registration=_registration(s), runs=runs, skipped=s.skipped)
+
+    @app.get("/suites/{suite_id}/runs/{run_id}", response_model=RunDetailOut, responses=ERRORS, tags=["suites"])
+    def get_run(suite_id: str = Path(pattern=SUITE_ID), run_id: str = Path(pattern=SUITE_ID),
+                store: ResultStore = Depends(get_store)) -> RunDetailOut:
+        s = load_suite(store, suite_id)
+        matches = [r for r in s.records if r.run.run_id.startswith(run_id)]
+        if not matches:
+            raise ApiError(404, "not_found", f"suite {s.suite_id[:8]} has no run starting with {run_id!r}",
+                           {"suite_id": s.suite_id, "run_id": run_id})
+        if len(matches) > 1:
+            raise ApiError(409, "ambiguous_id", f"{run_id!r} matches {len(matches)} runs - type more characters")
+        record = matches[0]
+        task = next((t for t in s.tasks if t.id == record.task_id), None)
+        return RunDetailOut(suite_id=s.suite_id, record=record,
+                            analysis=analyze_run(task, record) if task else None)
+
+    @app.get("/suites/{suite_id}/failures", response_model=FailuresOut, responses=ERRORS, tags=["suites"])
+    def get_failures(suite_id: str = Path(pattern=SUITE_ID),
+                     store: ResultStore = Depends(get_store)) -> FailuresOut:
+        s = load_suite(store, suite_id)
+        if not s.tasks:
+            raise ApiError(409, "not_analysable", "this suite stored no task definitions, so it cannot be analysed",
+                           {"suite_id": s.suite_id})
+        return FailuresOut(note="Rule-based, from the stored trace: likely patterns, not the model's reasoning. "
+                                "Infrastructure errors are not agent failures.", analysis=analyze_suite(s))
+
+    @app.get("/tasks/{task_id}/history", response_model=HistoryPage, responses=ERRORS, tags=["tasks"])
+    def task_history(task_id: str = Path(pattern=TASK_ID),
+                     limit: int = Query(20, ge=1, le=MAX_LIMIT), offset: int = Query(0, ge=0),
+                     store: ResultStore = Depends(get_store)) -> HistoryPage:
+        _known_task(store, task_id)
+        items, pagination = _paginate(store.task_history(task_id), limit, offset)
+        return HistoryPage(task_id=task_id, items=items, pagination=pagination)
+
+    @app.get("/tasks/{task_id}/measure", response_model=MeasureOut, responses=ERRORS, tags=["tasks"])
+    def task_measure(task_id: str = Path(pattern=TASK_ID),
+                     store: ResultStore = Depends(get_store)) -> MeasureOut:
+        _known_task(store, task_id)
+        groups = measure_task(store, task_id)
+        sizes = ", ".join(f"{g.eligible} evaluated" for g in groups) or "no runs"
+        return MeasureOut(
+            task_id=task_id,
+            groups=[MeasureGroupOut(
+                provider=g.provider, model=g.model, kind=_kind(g.provider), tools=g.tools, calculator=g.calculator,
+                suites=len(g.suites), scheduled=g.scheduled, passed=g.passed, evaluated=g.eligible,
+                infra_errors=g.infra_errors, skipped=g.skipped,
+                avg_llm_calls=sum(g.llm_calls) / len(g.llm_calls) if g.llm_calls else None,
+                avg_steps=sum(g.steps) / len(g.steps) if g.steps else None,
+                runs_with_round_errors=g.runs_with_round_errors, round_errors=g.round_errors,
+                tool_errors=g.tool_errors, near_step_limit=g.near_step_limit,
+                step_limit_failures=g.step_limit_failures) for g in groups],
+            limitations=[f"Tiny samples ({sizes}): exploratory evidence, not statistical proof.",
+                         *MEASURE_LIMITATIONS])
+
+    @app.get("/compare", response_model=CompareOut, responses=ERRORS, tags=["suites"])
+    def compare_suites(ids: list[str] = Query(..., description=f"2 to {MAX_COMPARE} suite ids (repeat ?ids=)"),
+                       store: ResultStore = Depends(get_store)) -> CompareOut:
+        import re
+        bad = [i for i in ids if not re.fullmatch(SUITE_ID, i)]
+        if bad:
+            raise ApiError(422, "validation_error", "invalid suite id(s)", {"ids": bad})
+        if not 2 <= len(ids) <= MAX_COMPARE:
+            raise ApiError(422, "validation_error",
+                           f"a comparison needs 2 to {MAX_COMPARE} suite ids (got {len(ids)})")
+        suites = [load_suite(store, i) for i in ids]
+        full_ids = [s.suite_id for s in suites]
+        if len(set(full_ids)) != len(full_ids):
+            raise ApiError(422, "validation_error", "the same run was given more than once", {"ids": ids})
+        names = sorted({s.suite_name for s in suites})
+        if len(names) > 1:
+            raise ApiError(409, "incompatible_comparison",
+                           "runs of different suites cannot be compared: " + ", ".join(names),
+                           {"suite_names": {s.suite_id[:8]: s.suite_name for s in suites}})
+        metrics = [compute_metrics(s) for s in suites]
+        conclusions = comparison_conclusions(suites, metrics)
+        outcomes = [{(r.task_id, r.repeat): r.outcome for r in s.records} for s in suites]
+        tasks = [TaskOutcomesOut(task_id=t, outcomes=(values := [o.get((t, 0), "skipped") for o in outcomes]),
+                                 differs=len(set(values)) > 1) for t in suites[0].task_ids]
+        return CompareOut(
+            suite_ids=full_ids, fair=conclusions["fair"], unfair_dimensions=conclusions["unfair_dimensions"],
+            changed_dimensions=conclusions["changed_dimensions"], tools_status=conclusions["tools_status"],
+            conclusions=conclusions["lines"],
+            dimensions={label: [str(get(s)) for s in suites]
+                        for label, get in {**CONFIG_DIMENSIONS, **FAIRNESS_DIMENSIONS}.items()},
+            metrics=metrics, tasks=tasks)
+
+    return app
