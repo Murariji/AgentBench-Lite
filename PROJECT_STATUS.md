@@ -19,6 +19,23 @@ when its phase begins.
 check clean, build OK; Python: 701 passed — when run by Claude; user to confirm). Step 10.3 (failures,
 compare, task history + charts) waits for approval AND the subset decision (A or B) for the chart.
 
+**Step 10.3a Failures + Task history pages: ✅ complete** (dashboard: 33 passed, type check clean, build OK;
+Python: 714 passed — when run by Claude; user to confirm). 10.3b waits for approval (and the
+config/tools-fingerprint decision recorded below).
+- Recharts 2.13.3 (exact). `src/charts/data.ts`: pure reshaping functions (`categoryBars` keeps the server's
+  categories, counts and order; `historyBars` orders oldest first and keeps "not run" as null) - no metrics.
+- Failures page (`/suites/:id/failures`, linked from run details): server summary (failed, passed, infra,
+  skipped, retries not recorded), category bar chart + accessible data table + aria summary, per-category runs
+  with evidence and trace links, infrastructure errors in their OWN section (never a failure category), near
+  misses as warnings only.
+- Task history page (`/tasks/:taskId`, linked from task ids on details and trace pages): paginated history
+  (REAL/SCRIPTED, model, tools or "unknown", task version, outcome incl. skipped + reason, LLM calls), a BAR
+  chart of LLM calls per run (colour = outcome, skipped = no bar; no line implied) with an aria summary, and
+  the measure table with ALL limitations. History rows link to run details (history has no run_id; accepted).
+- Sabotage checks: infra errors counted as a failure category → 4 tests fail; "not run" shown as 0 → 2 fail.
+  (A first sabotage attempt silently did not apply - `[...]` in a sed pattern - and was redone and verified.)
+- Build warning: bundle > 500 KB because of Recharts (works; lazy-loading chart pages proposed for 10.5).
+
 **Contract change (user-approved option B): subset vs full-suite runs in GET /suites ✅** (Python: 714 passed;
 dashboard: 21 passed; build OK — when run by Claude; user to confirm).
 - `SuiteSummaryOut` gains `tasks_fingerprint` (null = task definitions not stored), `registration_status`
@@ -635,6 +652,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 10, Step 10.3 — failures page, compare page, task history + measure, charts (Recharts); the pass-rate chart must mark or separate scope=subset/unknown points. Waiting for approval. In parallel: A.4 Stage 2.
+Phase 10, Step 10.3b (Compare + pass-rate chart) with the user's recorded requirements (docs/learning/phase-10-notes.md): only registration_status=matches on the trend; separate lines per model, config and tools; incomplete marked; null = gap; 500-run limit disclosed. Needs a decision first: GET /suites lacks config_fingerprint and tools_fingerprint. In parallel: A.4 Stage 2.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

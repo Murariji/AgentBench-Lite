@@ -13,6 +13,11 @@ export type RunSummary = Schemas["RunSummaryOut"];
 export type RunDetail = Schemas["RunDetailOut"];
 export type Rate = Schemas["Rate"];
 export type Signal = Schemas["Signal"];
+export type Failures = Schemas["FailuresOut"];
+export type RunAnalysis = Schemas["RunAnalysis"];
+export type HistoryPage = Schemas["HistoryPage"];
+export type HistoryEntry = Schemas["TaskHistoryEntry"];
+export type Measure = Schemas["MeasureOut"];
 
 // Where the API runs. Override with VITE_API_BASE in dashboard/.env.local if you changed the port.
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
@@ -78,4 +83,10 @@ export const api = {
   suite: (suiteId: string) => request<SuiteDetail>(`/suites/${encodeURIComponent(suiteId)}`),
   run: (suiteId: string, runId: string) =>
     request<RunDetail>(`/suites/${encodeURIComponent(suiteId)}/runs/${encodeURIComponent(runId)}`),
+  failures: (suiteId: string) => request<Failures>(`/suites/${encodeURIComponent(suiteId)}/failures`),
+  /** GET /tasks/{id}/history - newest suite first, paginated by the server. */
+  history: (taskId: string, { offset = 0, limit = PAGE_SIZE } = {}) =>
+    request<HistoryPage>(`/tasks/${encodeURIComponent(taskId)}/history?${new URLSearchParams({
+      limit: String(limit), offset: String(offset) })}`),
+  measure: (taskId: string) => request<Measure>(`/tasks/${encodeURIComponent(taskId)}/measure`),
 };

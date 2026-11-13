@@ -45,7 +45,8 @@ TypeScript then shows every place in the dashboard that must follow the change.
 | `src/api/client.ts` | the only code that calls the API; one `ApiError` for every failure |
 | `src/api/useApi.ts` | a small hook: loading / error / ready state for one request |
 | `src/api/schema.d.ts` | generated TypeScript types (from `openapi.json`) |
-| `src/pages/` | Runs (`/`), run details (`/suites/:id`), trace viewer (`/suites/:id/runs/:runId`), connection |
+| `src/pages/` | Runs (`/`), run details (`/suites/:id`), trace viewer (`/suites/:id/runs/:runId`), failures (`/suites/:id/failures`), task history (`/tasks/:taskId`), connection |
+| `src/charts/data.ts` | pure functions that only RESHAPE API data for charts (never compute metrics) |
 | `src/components/ui.tsx` | badges (REAL/SCRIPTED, outcome, complete), card, loading/error box |
 | `src/format.ts` | display only: UTC times, `n/a` for unknown values, server counts |
 | `src/test/` | test setup, a fake `fetch`, and fixtures typed with the contract types |

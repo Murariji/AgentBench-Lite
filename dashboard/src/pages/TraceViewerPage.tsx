@@ -55,7 +55,10 @@ function Trace({ d }: { d: RunDetail }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold font-mono">{d.record.task_id}{d.record.repeat > 0 && ` #${d.record.repeat + 1}`}</h2>
+        <h2 className="text-lg font-semibold font-mono">
+          <Link to={`/tasks/${d.record.task_id}`} className="hover:underline" title="this task across all runs">{d.record.task_id}</Link>
+          {d.record.repeat > 0 && ` #${d.record.repeat + 1}`}
+        </h2>
         <OutcomeBadge outcome={d.record.outcome} />
         <span className="text-sm text-slate-500">run {short(run.run_id ?? "")} · status {run.status}</span>
       </div>

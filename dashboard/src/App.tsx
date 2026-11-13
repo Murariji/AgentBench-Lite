@@ -1,7 +1,9 @@
 import { BrowserRouter, Link, NavLink, Route, Routes } from "react-router-dom";
 import { ConnectionPage } from "./pages/ConnectionPage";
+import { FailuresPage } from "./pages/FailuresPage";
 import { RunDetailsPage } from "./pages/RunDetailsPage";
 import { RunsPage } from "./pages/RunsPage";
+import { TaskHistoryPage } from "./pages/TaskHistoryPage";
 import { TraceViewerPage } from "./pages/TraceViewerPage";
 
 const nav = ({ isActive }: { isActive: boolean }) =>
@@ -26,6 +28,8 @@ export function AppRoutes() {
           <Route path="/" element={<RunsPage />} />
           <Route path="/suites/:suiteId" element={<RunDetailsPage />} />
           <Route path="/suites/:suiteId/runs/:runId" element={<TraceViewerPage />} />
+          <Route path="/suites/:suiteId/failures" element={<FailuresPage />} />
+          <Route path="/tasks/:taskId" element={<TaskHistoryPage />} />
           <Route path="/connection" element={<ConnectionPage />} />
           <Route path="*" element={<p role="alert">Page not found. <Link to="/" className="text-sky-700 underline">All runs</Link></p>} />
         </Routes>

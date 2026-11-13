@@ -69,3 +69,43 @@ more than the contract promises, so a missing list is treated as empty.
 6. Why does the details page show "2 / 2" instead of "100%"?
 7. What does the Runs page show for a run with an infrastructure error, and why is it not a failure?
 8. Why must the test fixtures be typed with the generated contract types?
+
+## Requirements recorded for Step 10.3b (user, before 10.3a)
+1. Chart comparability: only `registration_status = matches` runs form the full-suite trend; subset,
+   differs and unregistered runs are separate markers, never connected; never one line across different
+   models, agent configurations or tool fingerprints; incomplete runs visibly distinguished and not
+   connected unless their comparability is established.
+2. API values: the server's `pass_rate.rate` unchanged; null stays a gap (never 0%); verify the needed fields
+   exist in GET /suites; no metric calculated in React.
+3. Pagination: follow `next_offset` up to 500 runs; if the limit is reached, say visibly that the chart shows
+   only the latest 500 runs.
+
+**Verified against the contract:** GET /suites has registration_status, provider, model, complete,
+pass_rate.rate and pagination — but NOT a config fingerprint (only `config_name`, a label) and NOT
+`tools_fingerprint`. 10.3b therefore needs a decision: a deliberate contract change adding
+`config_fingerprint` + `tools_fingerprint` to SuiteSummaryOut, or fetching run details per point.
+Consequence of rule 1: unregistered suites (e.g. all Gemini `shop` runs) never form a trend line.
+
+## Step 10.3a — Failures and Task history
+
+| Concept | In plain words |
+|---|---|
+| Recharts | charts as components: `<BarChart data={rows}><XAxis dataKey="category" /><Bar dataKey="runs" /></BarChart>` |
+| reshaping vs recalculating | `{"wrong_result": 4}` → `[{category: "wrong_result", runs: 4}]` is reshaping (same numbers); a percentage from raw outcomes would be recalculating — never done |
+| pure function | same input → same output, nothing else happens; easy to test on its own |
+| bars, not lines, for history | separate runs are separate events; a line would suggest a smooth change between them |
+| accessible charts | an `aria-label` summary and a data table with the same values next to every chart |
+
+**Honesty in these pages:** infrastructure errors have their own section and never appear in the failure
+chart; near misses are labelled "warnings only"; skipped runs have no bar (not a 0 bar); tools "unknown"
+stays unknown; the measure always shows every limitation.
+
+**A lesson about sabotage checks:** the first sabotage did not change the file (square brackets are special
+in `sed` patterns), so it "passed" for the wrong reason. A sabotage check is only valid if you confirm the
+code really changed.
+
+## Self-check (10.3a)
+9. Why are infrastructure errors not a bar in the failure-category chart?
+10. A skipped run has `llm_calls: null`. Why is it drawn as no bar instead of a 0 bar?
+11. Why does the task-history chart use bars, not a line?
+12. Why does every chart have a table next to it?

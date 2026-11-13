@@ -48,6 +48,9 @@ function Details({ s }: { s: SuiteDetail }) {
         </p>
       )}
       <RegistrationBanner registration={s.registration} />
+      <p className="text-sm">
+        <Link to={`/suites/${s.suite_id}/failures`} className="text-sky-700 hover:underline">Failure analysis →</Link>
+      </p>
       {!s.complete && (
         <div role="note" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">
           Incomplete: {m.infra_errors} infrastructure error(s) and {m.skipped_runs} skipped run(s) are NOT counted as
@@ -100,7 +103,10 @@ function Details({ s }: { s: SuiteDetail }) {
             <tbody>
               {s.runs.map((r) => (
                 <tr key={r.run_id} className="border-t border-slate-100">
-                  <td className="py-1 pr-3 font-mono">{r.task_id}{s.repeats > 1 && ` #${r.repeat + 1}`}</td>
+                  <td className="py-1 pr-3 font-mono">
+                    <Link to={`/tasks/${r.task_id}`} className="hover:underline" title="this task across all runs">{r.task_id}</Link>
+                    {s.repeats > 1 && ` #${r.repeat + 1}`}
+                  </td>
                   <td className="pr-3">{r.difficulty ?? "—"}</td>
                   <td className="pr-3"><OutcomeBadge outcome={r.outcome} />{r.error_kind && <span className="ml-1 text-xs text-slate-500">{r.error_kind}</span>}</td>
                   <td className="pr-3 font-mono">{r.final_answer ?? "—"}</td>
