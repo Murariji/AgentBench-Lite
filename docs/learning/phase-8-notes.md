@@ -120,3 +120,19 @@ they CAN fail.
 6. Why does misread_result require the output to be small?
 7. Why is "unclassified" better than forcing every failure into a category?
 8. A passed run used 7 of 8 steps and needed 2 retries. What does the analysis report?
+
+## Step 8.3 — reports and CLI
+
+- Every text report now ends with a **Failure analysis** section: categories in priority order with one
+  example each, infrastructure errors apart (with their kinds), skipped runs, near misses, and unknown
+  retries said out loud.
+- `results.py failures <id>` shows the detail; `failures --all` adds up categories across all stored runs.
+- **Why no API calls:** analysis is like a match commentator watching the recording — the match
+  (benchmark run) already happened and was stored. Only NEW runs or an LLM judge would need the API.
+- **Honest gap:** real Gemini runs have no failures yet, so the dashboard's failure page would be empty
+  for real data until the benchmark gets harder tasks ("benchmark v2").
+
+## Self-check (8.3)
+9. Why is the quota error counted under "Infra errors" and not under "Failed runs"?
+10. Your Gemini runs show 0 failures. Name two things the near-miss warnings still tell you.
+11. Why can the analysis of last week's runs change after we improve a rule — and why is that fine?

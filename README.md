@@ -18,7 +18,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **Runner** | Execute an agent on a task with tools and a step limit | ✅ Implemented |
 | **Tracer** | Record every step: prompt, tool call, arguments, result, timing, tokens | ✅ Implemented |
 | **Evaluator** | Decide whether the task was completed correctly | ✅ Implemented (deterministic) |
-| **Analyzer** | Categorize failures (guessing, tool misuse, loops, unfixed errors, misread or wrong results) with evidence | ✅ Implemented (report + CLI: next) |
+| **Analyzer** | Categorize failures (guessing, tool misuse, loops, unfixed errors, misread or wrong results) with evidence, plus near-miss warnings | ✅ Implemented |
 | **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | ✅ Implemented |
 | **Benchmarks** | Run task suites, compute metrics, compare agent configurations, free-tier safety | ✅ Implemented |
 | **Storage** | SQLite history of every run, trace and check; queries and a results CLI | ✅ Implemented |
@@ -120,6 +120,27 @@ python scripts/results.py import results/*.json     # store exported JSON (dupli
   worked). Runs from before this existed show retries as *not recorded*, never as zero.
 - **If saving fails:** the benchmark result is still valid. A warning explains why, and a JSON
   recovery copy is written to `results/` for a later `import`. Nothing is reported as saved unless it was.
+
+## Failure analysis
+
+Why did a run fail? Deterministic rules read the stored trace (no LLM, no API calls, ₹0) and give each
+failed run **one primary category, with evidence** (step numbers, tool names, error text), in this
+priority order: `invalid_response`, `no_data_used` (answered without ever calling a required tool),
+`tool_misuse`, `loop`, `unrecovered_tool_error`, `step_limit`, `misread_result` (the right value was in
+the final tool output), `wrong_result` (the answer repeats a wrong tool result), `unparseable_answer`,
+and `unclassified` when the evidence is not enough. Infrastructure errors are never agent failures.
+
+Passed runs can still get **near-miss warnings**: near the step limit, recovered or ignored tool errors,
+and retried LLM requests (for runs stored before retries were recorded: "not recorded", never zero).
+
+```powershell
+python scripts/results.py failures 0af951e0          # every failed run and warning of one stored run
+python scripts/results.py failures --all             # categories across all stored runs
+```
+
+**Limits:** the rules see what happened, not what the model "thought"; categories are likely patterns.
+So far the real Gemini runs had no failures (the suite is too easy for that model), so the categories
+are verified on scripted test fixtures; harder tasks are planned.
 
 ## Benchmark metrics
 

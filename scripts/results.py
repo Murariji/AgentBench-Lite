@@ -6,6 +6,8 @@
     python scripts/results.py compare <id1> <id2>       # side by side, with the fairness check
     python scripts/results.py history <task_id>         # one task across every run, e.g. shop-010
     python scripts/results.py import results/<file>.json [more files...]
+    python scripts/results.py failures <id>             # why runs failed, with evidence + near misses
+    python scripts/results.py failures --all [--real]   # failure categories across every stored run
 
 <id> can be the first few characters of a suite id (like a short git commit id).
 """
@@ -13,7 +15,10 @@
 import argparse
 import sys
 
-from agentbench.report import compare, format_report, load_json
+from collections import Counter
+
+from agentbench.analysis import analyze_suite
+from agentbench.report import compare, format_failures, format_report, load_json
 from agentbench.storage import (DEFAULT_RESULTS_DB, DuplicateSuiteError, ResultStore, StorageError)
 
 
@@ -56,6 +61,46 @@ def cmd_history(store: ResultStore, args) -> None:
               f"{(h.task_hash or '-')[:8]:8}  {h.repeat + 1:>3}  {h.outcome.upper():11}  {calls:>5}  {detail}")
 
 
+def cmd_failures(store: ResultStore, args) -> None:
+    """Re-analyses STORED traces: no LLM, no API calls."""
+    if not args.all:
+        suite = store.load(store.resolve(args.id))
+        print(f"Suite {suite.suite_id[:8]}  {suite.config.name}  [{suite.config.model}]  "
+              f"started {suite.started_at:%Y-%m-%d %H:%M} UTC")
+        print(format_failures(suite, detailed=True))
+        return
+    rows = store.list_suites(real_only=args.real)
+    if not rows:
+        print("No stored runs yet.")
+        return
+    categories, warnings, failed, evaluated, unrecorded = Counter(), Counter(), 0, 0, 0
+    print(f"{'ID':8}  {'CONFIG':16}  {'MODEL':22}  {'FAILED':>9}  CATEGORIES / NEAR MISSES")
+    for row in rows:
+        suite = store.load(row.suite_id)
+        if not suite.tasks:
+            print(f"{row.suite_id[:8]:8}  {row.config_name[:16]:16}  {row.model[:22]:22}  {'-':>9}  "
+                  f"(no task definitions: cannot analyse)")
+            continue
+        a = analyze_suite(suite)
+        categories.update(a.category_counts)
+        warnings.update(a.warning_counts)
+        failed += a.failed_runs
+        evaluated += a.failed_runs + a.passed_runs
+        unrecorded += a.retries_not_recorded
+        detail = ", ".join(f"{c} x{n}" for c, n in a.category_counts.items()) or "no failures"
+        if a.warning_counts:
+            detail += " | near misses: " + ", ".join(f"{w} x{n}" for w, n in a.warning_counts.items())
+        print(f"{row.suite_id[:8]:8}  {row.config_name[:16]:16}  {row.model[:22]:22}  "
+              f"{f'{a.failed_runs}/{a.failed_runs + a.passed_runs}':>9}  {detail}")
+    print(f"\nAll {len(rows)} suite(s): {failed} failed of {evaluated} evaluated runs")
+    for category, n in categories.most_common():
+        print(f"  {category:24} {n:>4}")
+    if warnings:
+        print("Near misses: " + ", ".join(f"{w} x{n}" for w, n in warnings.most_common()))
+    if unrecorded:
+        print(f"Retries not recorded for {unrecorded} run(s) (stored before retries were captured).")
+
+
 def cmd_import(store: ResultStore, args) -> None:
     for path in args.files:
         suite = load_json(path)  # validated again on load; stored metrics are ignored
@@ -83,6 +128,11 @@ if __name__ == "__main__":
     p = sub.add_parser("history", help="one task across every run")
     p.add_argument("task_id")
     p.set_defaults(handler=cmd_history)
+    p = sub.add_parser("failures", help="failure analysis of one run, or of all runs")
+    p.add_argument("id", nargs="?")
+    p.add_argument("--all", action="store_true", help="across every stored run")
+    p.add_argument("--real", action="store_true", help="with --all: only real LLM runs")
+    p.set_defaults(handler=cmd_failures)
     p = sub.add_parser("import", help="store exported JSON files")
     p.add_argument("files", nargs="+")
     p.set_defaults(handler=cmd_import)
@@ -90,6 +140,8 @@ if __name__ == "__main__":
 
     if args.command == "compare" and len(args.ids) < 2:
         parser.error("compare needs at least two ids")
+    if args.command == "failures" and bool(args.id) == args.all:
+        parser.error("failures needs either a suite id or --all")
     try:
         with ResultStore(args.db) as store:
             args.handler(store, args)

@@ -6,9 +6,11 @@ configuration dimension changed. The comparison says plainly when that isn't tru
 
 import json
 import re
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agentbench.analysis import RunAnalysis, analyze_suite
 from agentbench.metrics import SuiteMetrics, compute_metrics
 from agentbench.models import SuiteResult
 
@@ -100,6 +102,52 @@ def format_report(suite: SuiteResult, metrics: SuiteMetrics | None = None) -> st
         lines.append(f"{record.task_id + rep:10} {record.difficulty or '-':7} {record.outcome.upper():11} {detail}")
     for skipped in suite.skipped:
         lines.append(f"{skipped.task_id:10} {'-':7} {'SKIPPED':11} ({skipped.reason})")
+    lines += ["", format_failures(suite)]
+    return "\n".join(lines)
+
+
+# ---------- failure analysis (Phase 8) ----------------------------------------------
+
+def _run_label(run: RunAnalysis, repeats: int) -> str:
+    return run.task_id + (f" #{run.repeat + 1}" if repeats > 1 else "")
+
+
+def format_failures(suite: SuiteResult, *, detailed: bool = False) -> str:
+    """The failure-analysis section: categories with evidence, near misses, infra errors apart.
+
+    detailed=False: counts + one example per category (for the normal report).
+    detailed=True : every failed run with all its signals, and every warning (results.py failures).
+    """
+    title = "Failure analysis (rule-based, from the stored trace: likely patterns, not the model's reasoning)"
+    if not suite.tasks:
+        return f"{title}\n  not available: this result has no task definitions"
+    a = analyze_suite(suite)
+    lines = [title, f"  Failed runs : {a.failed_runs} of {a.failed_runs + a.passed_runs} evaluated"]
+    for category, count in a.category_counts.items():
+        examples = a.examples(category, limit=None if detailed else 1)
+        lines.append(f"    {category:24} {count:>3}" + ("" if detailed else
+                     f"   e.g. {_run_label(examples[0], suite.repeats)}: {examples[0].primary.evidence}"))
+        if detailed:
+            for run in examples:
+                lines.append(f"      {_run_label(run, suite.repeats):12} {run.primary.evidence}")
+                for signal in run.additional_signals:
+                    lines.append(f"      {'':12}   also: {signal.name} - {signal.evidence}")
+    kinds = Counter(r.infra_error_kind for r in a.runs if r.outcome == "infra_error")
+    lines.append(f"  Infra errors: {a.infra_errors}" + (
+        " (not agent failures: " + ", ".join(f"{k} x{n}" for k, n in kinds.items()) + ")" if kinds else ""))
+    lines.append(f"  Skipped     : {a.skipped_runs}")
+    if a.warning_counts:
+        lines.append("  Near misses : " + ", ".join(f"{name} x{n}" for name, n in a.warning_counts.items())
+                     + "  (warnings only; they never change pass/fail)")
+        if detailed:
+            for run in a.runs:
+                for w in run.warnings:
+                    lines.append(f"      {_run_label(run, suite.repeats):12} {w.name}: {w.evidence}")
+    else:
+        lines.append("  Near misses : none")
+    if a.retries_not_recorded:
+        lines.append(f"  Retries     : not recorded for {a.retries_not_recorded} run(s) (stored before retries "
+                     f"were captured; unknown, not zero)")
     return "\n".join(lines)
 
 

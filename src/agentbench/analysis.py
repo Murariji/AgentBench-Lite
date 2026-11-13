@@ -66,6 +66,7 @@ class RunAnalysis(BaseModel):
     signals: list[Signal] = Field(default_factory=list)   # everything detected (incl. the primary)
     warnings: list[Signal] = Field(default_factory=list)  # near misses: never change the outcome
     retries_recorded: bool                      # False = run from before retries were captured
+    infra_error_kind: str | None = None         # e.g. "quota_exhausted" (infra runs only)
 
     @property
     def primary(self) -> Signal | None:
@@ -87,7 +88,7 @@ class SuiteAnalysis(BaseModel):
     skipped_runs: int
     retries_not_recorded: int                   # runs whose retries are unknown (not zero)
 
-    def examples(self, category: str, limit: int = 2) -> list[RunAnalysis]:
+    def examples(self, category: str, limit: int | None = 2) -> list[RunAnalysis]:  # None = all
         return [r for r in self.runs if r.category == category][:limit]
 
 
@@ -323,7 +324,8 @@ def analyze_run(task: Task, record: RunRecord) -> RunAnalysis:
     if task.id != record.task_id:
         raise ValueError(f"record is for task {record.task_id!r}, not {task.id!r}")
     base = dict(run_id=run.run_id, task_id=task.id, repeat=record.repeat, outcome=record.outcome,
-                retries_recorded=run.retries is not None)
+                retries_recorded=run.retries is not None,
+                infra_error_kind=run.error_kind if record.outcome == "infra_error" else None)
     if record.outcome == "infra_error":     # not the agent's fault: no category, no agent warnings
         return RunAnalysis(**base)
     warnings = _warnings(task, run)

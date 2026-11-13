@@ -15,8 +15,25 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Phase 8 — Failure analysis: 🔶 in progress.** Steps 8.1 ✅, 8.2 ✅ (tests: **366 passed** when run by
-Claude; 28 new in 8.2 — user to confirm). Step 8.3 (report section + `results.py failures`) waits for approval.
+**Phase 8 — Failure analysis: ✅ complete** (Steps 8.1, 8.2, 8.3). Tests: **375 passed** when run by
+Claude (9 new in 8.3 — user to confirm).
+
+**Step 8.3 Reports and CLI: ✅ complete.**
+- `report.format_failures(suite, detailed=False)`: a section at the end of every text report — failed
+  runs of evaluated, each category with its count (priority order) and one example with evidence,
+  infrastructure errors apart with their kinds, skipped runs, near-miss counts, and "retries not recorded
+  for N run(s) … unknown, not zero". `detailed=True`: every failed run with all additional signals, and
+  every warning per run. Results without task definitions: "not available".
+- `RunAnalysis.infra_error_kind` (e.g. quota_exhausted) for the infra line.
+- `python scripts/results.py failures <id>` (detailed) and `failures --all [--real]` (per suite + totals
+  across all stored runs). Both re-analyse STORED traces: no LLM, no API calls.
+- On a copy of the user's real data: Gemini 0/40 failed; near misses: near_step_limit ×9,
+  unrecorded_retries_likely ×5, recovered_tool_errors ×3, unfixed_tool_errors ×1 (shop-002's ignored
+  `datetime(...)` calculator error in the first run).
+- Honest limitation: real runs have produced no failures yet (ceiling effect), so the analyser is only
+  proven on scripted fixtures. A "benchmark v2" (harder tasks, a tools version in the fairness
+  fingerprint) would give it real failures; it needs a real run (~60 requests).
+
 
 **Step 8.2 Failure classifier: ✅ complete.**
 - `src/agentbench/analysis.py`: `analyze_run(task, record) -> RunAnalysis` (category, signals with
@@ -355,7 +372,7 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 - [x] **Phase 6** — Benchmark runner: task suites, batch runs, metrics, agent configs + comparison;
   more realistic tools (SQL query over sample SQLite DB, date calculator, unit converter, file reader)
 - [x] **Phase 7** — Storage: SQLite for runs & traces (adds `run_id`)
-- [ ] **Phase 8** — Failure analysis: categorize failures
+- [x] **Phase 8** — Failure analysis: categorize failures
 - [ ] **Phase 9** — FastAPI backend: REST API over the framework and database
 - [ ] **Phase 10** — Dashboard: React + TypeScript + Tailwind + Recharts
 - [ ] **Phase 11** — Docker: package backend (and dashboard) for one-command start
@@ -364,6 +381,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 8, Step 8.3 — failure section in the text report (categories, counts, evidence, warnings, infra separately) and `python scripts/results.py failures <id>` / `failures --all` over stored traces. Waiting for user approval.
+Decision for the user: a short "benchmark v2" step (harder tasks, tools version in the fingerprint, calculator `round()`; one real run) before Phase 9 — recommended so the dashboard shows real failures — or go straight to Phase 9 (FastAPI). Waiting for user approval.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.
