@@ -132,6 +132,17 @@ def extract_number(answer: str) -> NumberParse:
     return NumberParse(None, f"ambiguous: found {listed} and no clear final answer")
 
 
+def numbers_in(text: str) -> list[Decimal]:
+    """EVERY well-formed number in a text (same parsing rules as extract_number), e.g. in a tool
+    output. Unclear formats like "1,5" are skipped. Used by failure analysis (Phase 8)."""
+    return [c.value for c in _candidates(_CURRENCY.sub(" ", text)) if c.value is not None]
+
+
+def allowed_difference(target: Decimal, abs_tol: float = 0.0, rel_tol: float = 0.0) -> Decimal:
+    """How far a number may be from the target and still count as correct (the task's tolerance)."""
+    return max(Decimal(str(abs_tol)), Decimal(str(rel_tol)) * abs(target))
+
+
 # ---------- the individual checks ---------------------------------------------
 
 def check_status(result: RunResult) -> Check:
@@ -171,7 +182,7 @@ def check_number(expected: str, answer: str, abs_tol: float = 0.0, rel_tol: floa
         return Check(name=name, passed=False, reason=f"could not read the answer: {got.reason}")
 
     difference = abs(got.value - target.value)
-    allowed = max(Decimal(str(abs_tol)), Decimal(str(rel_tol)) * abs(target.value))
+    allowed = allowed_difference(target.value, abs_tol, rel_tol)
     if difference <= allowed:
         return Check(name=name, passed=True,
                      reason=f"{got.reason}; matches expected {_fmt(target.value)}")

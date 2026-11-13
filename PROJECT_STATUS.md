@@ -15,8 +15,36 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Phase 8 — Failure analysis: 🔶 in progress.** Step 8.1 ✅ (tests: **338 passed** when run by Claude;
-14 new — user to confirm). Step 8.2 (classifier + failure zoo) waits for approval.
+**Phase 8 — Failure analysis: 🔶 in progress.** Steps 8.1 ✅, 8.2 ✅ (tests: **366 passed** when run by
+Claude; 28 new in 8.2 — user to confirm). Step 8.3 (report section + `results.py failures`) waits for approval.
+
+**Step 8.2 Failure classifier: ✅ complete.**
+- `src/agentbench/analysis.py`: `analyze_run(task, record) -> RunAnalysis` (category, signals with
+  evidence/step indexes/tool names, warnings, `retries_recorded`), `analyze_suite(suite) -> SuiteAnalysis`
+  (category and warning counts, examples, failed/passed/infra/skipped, retries not recorded).
+- One detector per category, `PRIORITY` = invalid_response, no_data_used, tool_misuse, loop,
+  unrecovered_tool_error, step_limit, misread_result, wrong_result, unparseable_answer; fallback
+  `unclassified`. `choose_primary()` is the only place that decides. Symptom signal: no_final_answer.
+- Key rules: no_data_used = a required tool never CALLED (called-but-failed is a tool error, not a
+  guess); tool_misuse = the registry/runner messages "unknown tool", "not allowed", "bad arguments";
+  loop = same normalized call (whitespace, trailing ';') ≥ 3 times; unrecovered = that tool never
+  succeeded after its last error; misread = the correct value is in the FINAL successful tool output
+  (≤ 6 values, numbers within the task tolerance) and the answer could be read; wrong_result = the answer
+  repeats a tool result (numbers compared at the answer's precision) and the correct value was not in the
+  final output; unparseable = the evaluator's own `extract_number` refuses.
+- Reuse, not a second parser: `evaluators.numbers_in()` and `allowed_difference()` (now also used by
+  `check_number`).
+- Warnings (never change the outcome): near_step_limit (≥ max_steps − 1), recovered_tool_errors,
+  unfixed_tool_errors (added after real data showed an ignored calculator error in a passed run),
+  llm_retries; for old runs with `retries=None` and more LLM calls than steps:
+  unrecorded_retries_likely ("details unknown"), never "0 retries".
+- Failure zoo (`tests/test_analysis.py`): scripted fixtures through the real runner, tools, DB and
+  evaluator for every category, the unclassified fallback, priority, multiple signals, infra excluded,
+  passed runs, warnings, the sloppy suite (4 × wrong_result) and historical re-analysis of the genuine
+  v1 database. Mutation check: swapping two priorities makes 3 tests fail.
+- Real data (copy of the user's results.db): 0 failures; warnings: shop-010 near_step_limit +
+  recovered calculator errors, shop-009/010 unrecorded_retries_likely ("9 LLM calls for 8 steps").
+
 
 **Step 8.1 Retry recording + schema migration 1 → 2: ✅ complete.**
 - `RetryEvent(step_index, attempt, error_kind, status_code, waited_seconds, request_id, occurred_at,
@@ -336,6 +364,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 8, Step 8.2 — `analysis.py` (`analyze_run`, `analyze_suite`): primary category by priority (invalid_response, no_data_used, tool_misuse, loop, unrecovered_tool_error, step_limit, misread_result, wrong_result, unparseable_answer, unclassified), signals with evidence, near-miss warnings, failure zoo. Waiting for user approval.
+Phase 8, Step 8.3 — failure section in the text report (categories, counts, evidence, warnings, infra separately) and `python scripts/results.py failures <id>` / `failures --all` over stored traces. Waiting for user approval.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

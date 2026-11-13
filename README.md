@@ -18,7 +18,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **Runner** | Execute an agent on a task with tools and a step limit | ✅ Implemented |
 | **Tracer** | Record every step: prompt, tool call, arguments, result, timing, tokens | ✅ Implemented |
 | **Evaluator** | Decide whether the task was completed correctly | ✅ Implemented (deterministic) |
-| **Analyzer** | Categorize failures (wrong tool, bad arguments, loops, wrong answer) | 🗓️ Planned |
+| **Analyzer** | Categorize failures (guessing, tool misuse, loops, unfixed errors, misread or wrong results) with evidence | ✅ Implemented (report + CLI: next) |
 | **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | ✅ Implemented |
 | **Benchmarks** | Run task suites, compute metrics, compare agent configurations, free-tier safety | ✅ Implemented |
 | **Storage** | SQLite history of every run, trace and check; queries and a results CLI | ✅ Implemented |
