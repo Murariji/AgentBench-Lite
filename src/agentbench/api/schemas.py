@@ -6,9 +6,9 @@ summaries, and one consistent error format.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from agentbench.analysis import RunAnalysis, SuiteAnalysis
 from agentbench.metrics import SuiteMetrics
@@ -195,7 +195,7 @@ class CompareOut(BaseModel):
 class HealthOut(BaseModel):
     status: str
     schema_version: int
-    real_runs_enabled: bool          # always False in Phase 9.1 (read-only)
+    real_runs_enabled: bool          # True only if the server was started with --allow-real-runs
 
 
 class RegisteredSuiteOut(BaseModel):
@@ -209,3 +209,64 @@ class RegisteredSuiteOut(BaseModel):
     tools: dict[str, int]
     dataset: str | None
     tasks: list[str]
+
+
+# ---------- Phase 9.2: estimates and background runs ---------------------------------------------
+
+class RunIn(BaseModel):
+    """A request to estimate or start a run. Unknown fields are rejected (422)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    agent: Literal["careful", "sloppy", "gemini"]    # careful/sloppy = SCRIPTED test agents (not AI)
+    suite: str = "shop"
+    tasks: list[str] | None = Field(default=None, min_length=1, max_length=20)
+    repeats: int = Field(default=1, ge=1, le=10)
+    budget: int | None = Field(default=None, ge=1)  # REQUIRED for real runs: the hard request cap
+    confirm: bool = False                            # REQUIRED (true) for real runs
+
+
+class EstimateOut(BaseModel):
+    agent: str
+    kind: str
+    suite: str
+    tasks: list[str]
+    runs: int
+    estimate: dict | None                            # real runs only: typical / worst case / budget / time
+    registration: RegistrationOut
+    real_runs_enabled: bool
+    allowed: bool                                    # would POST /runs accept this request now?
+    reasons: list[str]                               # why not (empty when allowed)
+    note: str = "An estimate never sends anything to any model."
+
+
+class JobOut(BaseModel):
+    job_id: str
+    status: str                                      # queued | running | finished | incomplete | failed
+    agent: str
+    kind: str
+    suite: str
+    tasks: list[str]
+    repeats: int
+    budget: int | None
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    completed_tasks: int                             # executed runs so far (for a progress bar)
+    total_tasks: int                                 # scheduled runs (tasks x repeats)
+    percent: float
+    current_task: str | None
+    current_repeat: int | None
+    progress: list[str]                              # human-readable lines, newest last
+    suite_id: str | None
+    saved: bool | None                               # True ONLY if stored in SQLite; False = see recovery_path
+    save_error: str | None
+    recovery_path: str | None
+    error: str | None
+    summary: dict | None
+    note: str                                        # job status is temporary; results are not
+
+
+class JobPage(BaseModel):
+    items: list[JobOut]
+    pagination: Pagination

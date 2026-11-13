@@ -63,3 +63,40 @@ subclass of SuiteNotFoundError) lets the API answer 409 instead of 404. The stor
 2. Why is comparing a shop run with a shop-hard run a 409 and not a 200 with `fair: false`?
 3. Why does every request get its own ResultStore?
 4. What does `next_offset: null` tell the dashboard?
+
+## Step 9.2 — background runs, locks, and the real-run gates
+
+**Background thread.** `POST /runs` answers at once (202 + job id); a second worker inside the program runs
+the benchmark. Like a restaurant: the waiter takes the order and comes back; the cook works in the kitchen.
+
+**Race condition.** Two requests 1 ms apart could both see "no run active" and both start one.
+**Lock.** `with self._lock:` — the check AND the creation of the job happen as ONE step; the second
+request waits, then sees the first job and gets 409. Proven: moving the check outside the lock (with a tiny
+pause) made all 8 simultaneous requests start a run; the test caught it.
+
+**Job states.** queued → running → finished | incomplete (budget, quota, infra errors — finished runs KEPT
+and saved) | failed (an unexpected program error). A run stopped by the budget is honest partial work, not
+a failure.
+
+**Structured progress** for a progress bar: `completed_tasks / total_tasks`, `percent`, `current_task`,
+`current_repeat`, plus the human-readable lines.
+
+**The four gates (agent = gemini)**, checked on the SERVER, so no dashboard button can skip them:
+1. server started with `--allow-real-runs` — else 403 `real_runs_disabled` (the client is never built)
+2. `confirm: true` — else 422
+3. `budget` given and ≤ the server's maximum — else 422
+4. registration guard passes — else 409 `registration_mismatch`
+
+**Temporary vs permanent.** Job status is in memory (gone on restart); results are in SQLite (or a JSON
+recovery file, reported with its exact path, `saved: false`). Never "saved" unless SQLite committed.
+
+**One rulebook.** `agentbench/runs.py` holds the planning, guard, estimate, Gemini setup and execution
+for BOTH the CLI and the API.
+
+**Secrets.** Every message is passed through `redact()`; unexpected errors return only their type.
+
+## Self-check (9.2)
+5. Why is checking "is a run active?" outside the lock dangerous, even if it's only one line earlier?
+6. The budget runs out during task 2 of 2. Which status does the job get, and is task 1 kept?
+7. Why is the real Gemini client built INSIDE the job and not when the request arrives?
+8. The server restarts. What happens to `GET /runs/<old id>` and to `GET /suites/<its suite id>`?

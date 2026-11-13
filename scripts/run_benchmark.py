@@ -17,39 +17,16 @@ If that save fails, the result is NOT lost: a JSON recovery copy is written to r
 """
 
 import argparse
-import hashlib
 import sys
 
-from agentbench.benchmark import estimate_requests, run_suite
-from agentbench.datasets import DEFAULT_DB_PATH, build_shop_db
-from agentbench.models import AgentConfig
 from agentbench.report import compare, export_json, format_report
-from agentbench.runner import DEFAULT_SYSTEM_PROMPT
+from agentbench.runs import (DEFAULT_BUDGET, GEMINI_PACING_SECONDS, RunRequestError, execute_plan,
+                             gemini_client, gemini_config, plan_run, scripted_parts)
 from agentbench.storage import DEFAULT_RESULTS_DB, save_with_recovery
-from agentbench.registration import check_suite
-from agentbench.suites import GRADING_PROBES, SUITES, shop_registry
-from agentbench.suites.shop_agents import scripted_agent, scripted_config
-from agentbench.tools import ReadOnlySQLite
+from agentbench.suites import SUITES
 
-GEMINI_PACING_SECONDS = 6.0  # <= 10 requests per minute
-DEFAULT_BUDGET = 80
-
-
-def gemini_client():
-    """Created only AFTER --yes. Building the client sends no request."""
-    from dotenv import find_dotenv, load_dotenv
-
-    from agentbench.llm.gemini import GeminiClient
-
-    load_dotenv(find_dotenv(usecwd=True))
-    return GeminiClient()
-
-
-def gemini_config(model: str = "see .env / default") -> AgentConfig:
-    return AgentConfig(name="gemini-default", provider="gemini", model=model,
-                       system_prompt=DEFAULT_SYSTEM_PROMPT, max_attempts=3,
-                       min_interval_seconds=GEMINI_PACING_SECONDS)
-
+# The safety logic (validation, registration guard, estimate, Gemini setup, budget, pacing) lives in
+# agentbench/runs.py, shared with the web API, so both always follow the same rules.
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -64,43 +41,26 @@ if __name__ == "__main__":
     parser.add_argument("--suite", choices=sorted(SUITES), default="shop", help="which task suite (default: shop)")
     args = parser.parse_args()
 
-    suite_tasks = SUITES[args.suite]
-    known = [t.id for t in suite_tasks]
-    if args.tasks:
-        unknown = [t for t in args.tasks if t not in known]
-        if unknown:
-            parser.error(f"unknown task id(s) for suite {args.suite}: {', '.join(unknown)}. "
-                         f"Known: {', '.join(known)}")
-        if len(set(args.tasks)) != len(args.tasks):
-            parser.error("each task id may be given only once")
-    # Selected tasks keep the suite's own order. A subset has a different tasks fingerprint, so
-    # comparing it with a full-suite run is correctly reported as "not a fair comparison".
-    tasks = [t for t in suite_tasks if not args.tasks or t.id in args.tasks]
-
     if args.repeats < 1:
         parser.error("--repeats must be at least 1")
     if args.budget < 1:
         parser.error("--budget must be at least 1")
     real = args.agent == "gemini" and not args.compare
-
-    if not DEFAULT_DB_PATH.exists():
-        build_shop_db(DEFAULT_DB_PATH)  # only builds when missing; never overwrites (offline, no API)
-    dataset = f"{DEFAULT_DB_PATH.name} sha256:{hashlib.sha256(DEFAULT_DB_PATH.read_bytes()).hexdigest()[:12]}"
-
-    # Registration guard (Step A.4a): BEFORE any request, check that tasks, expected answers, grading
-    # (incl. probe answers through today's evaluator), tools and dataset are exactly what was registered.
-    with ReadOnlySQLite(DEFAULT_DB_PATH) as db:
-        tool_specs = shop_registry(db).specs()
-    guard = check_suite(args.suite, tasks, tool_specs, dataset, grading=GRADING_PROBES.get(args.suite))
+    try:
+        # Validation + registration guard (incl. grading probes) + estimate - BEFORE any request.
+        plan = plan_run("gemini" if real else "careful", args.suite, args.tasks, repeats=args.repeats,
+                        budget=args.budget)
+    except RunRequestError as exc:
+        parser.error(str(exc))
+    tasks, guard = plan.tasks, plan.guard
 
     if real:
         # The estimate comes FIRST; without --yes we stop here with zero API calls.
-        estimate = estimate_requests(tasks, gemini_config(), repeats=args.repeats, budget=args.budget)
         print("=== REAL Gemini run (uses free-tier quota) ===")
         print(f"Suite      : {args.suite}")
         print(f"Tasks      : {', '.join(t.id for t in tasks)}")
         print(f"Registered : {guard.line()}")
-        print(estimate.describe())
+        print(plan.estimate.describe())
         print(f"Pacing     : at least {GEMINI_PACING_SECONDS:.0f} s between requests")
         if guard.blocks_real_runs:
             print("\nREFUSED: this suite differs from its registration, so a real run would not measure the "
@@ -113,20 +73,16 @@ if __name__ == "__main__":
     elif guard.blocks_real_runs:
         print(f"WARNING (scripted run, continuing): {guard.line()}")
 
-    with ReadOnlySQLite(DEFAULT_DB_PATH) as db:
-        tools = shop_registry(db)
-        if real:
-            client = gemini_client()
-            print(f"\n=== running {args.suite} suite with REAL {client.name} ===")
-            suites = [run_suite(tasks, gemini_config(client.model), lambda task, repeat: client, tools,
-                                suite_name=args.suite, repeats=args.repeats, dataset=dataset,
-                                request_budget=args.budget)]
-        else:
-            suites = []
-            for kind in (["careful", "sloppy"] if args.compare else [args.agent]):
-                print(f"\n=== running {args.suite} suite with the {kind} SCRIPTED agent ===")
-                suites.append(run_suite(tasks, scripted_config(kind), scripted_agent(kind), tools,
-                                        suite_name=args.suite, repeats=args.repeats, dataset=dataset))
+    if real:
+        client = gemini_client()     # only now: every check above has passed
+        print(f"\n=== running {args.suite} suite with REAL {client.name} ===")
+        suites = [execute_plan(plan, gemini_config(client.model), lambda task, repeat: client)]
+    else:
+        suites = []
+        for kind in (["careful", "sloppy"] if args.compare else [args.agent]):
+            print(f"\n=== running {args.suite} suite with the {kind} SCRIPTED agent ===")
+            config, make_llm = scripted_parts(kind)
+            suites.append(execute_plan(plan, config, make_llm))
 
     all_stored = True
     for suite in suites:

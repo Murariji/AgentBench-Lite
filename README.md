@@ -243,8 +243,20 @@ python scripts/serve_api.py                      # http://127.0.0.1:8000/docs  (
 `GET /suites`, `/suites/{id}`, `/suites/{id}/runs/{run_id}`, `/suites/{id}/failures`,
 `/tasks/{task_id}/history`, `/tasks/{task_id}/measure`, `/compare?ids=a&ids=b`, `/registrations`,
 `/health`. Paginated lists, short ids, one error format (`{"error": {"code", "message", "details"}}`).
-Local only (127.0.0.1), no login, nothing can be changed or started yet. The framework itself does not
-need FastAPI.
+Local only (127.0.0.1), no login. The framework itself does not need FastAPI.
+
+**Runs through the API** (one at a time, in the background):
+
+```powershell
+curl -X POST http://127.0.0.1:8000/runs -H "Content-Type: application/json" -d "{\"agent\": \"careful\", \"suite\": \"shop-hard\"}"
+curl http://127.0.0.1:8000/runs/<job_id>        # status, completed_tasks / total_tasks, current_task, saved
+```
+
+`POST /estimates` shows the cost and whether a run would be allowed, and never sends anything. Scripted
+runs are always allowed. **Real Gemini runs are off** unless the server is started with
+`--allow-real-runs`, and even then each run needs `confirm: true`, a `budget` within `--max-real-budget`,
+and a passing registration guard. Job status lives in memory (lost on restart); results are saved to
+SQLite, or to a JSON recovery file if saving fails (`saved: false`, `recovery_path`).
 
 ## Tech stack
 

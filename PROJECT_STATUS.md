@@ -15,9 +15,37 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Phase 9 — FastAPI backend: 🔶 in progress. Step 9.1 read-only API ✅** (tests: 622 passed, 0 failed,
-0 skipped when run by Claude; 42 new — user to confirm). 9.2 (background scripted runs + real-run gates)
-waits for approval. A.4 Stage 2 can still be run by the user at any time (the guard protects it).
+**Phase 9 — FastAPI backend: 🔶 in progress. Steps 9.1 ✅ and 9.2 ✅** (tests: 649 passed, 0 failed,
+0 skipped when run by Claude; 27 new in 9.2 — user to confirm). 9.3 (CORS, hardening, docs) waits for
+approval. A.4 Stage 2 can still be run by the user at any time through the CLI.
+
+**Step 9.2 Background runs + real-run gates: ✅ complete.**
+- `src/agentbench/runs.py` (shared by CLI and API): `plan_run()` (validation, registration guard incl.
+  grading probes, estimate — offline), `execute_plan()` (run_suite with pacing, hard budget, circuit
+  breaker), `gemini_client()` / `gemini_config()` (moved from the CLI), `scripted_parts()`, `redact()`.
+  `scripts/run_benchmark.py` now uses it; its output and all its tests are unchanged.
+- `src/agentbench/api/jobs.py`: `JobManager` — one active run; the "is a run active?" check AND job
+  creation happen atomically under a `threading.Lock`; a background thread runs the job. States queued →
+  running → finished | incomplete (budget, quota or infra errors; finished runs kept and saved) | failed
+  (unexpected error). Structured progress: completed_tasks, total_tasks, percent, current_task,
+  current_repeat + human-readable lines. Saved only if SQLite committed (`saved`), else `save_error` +
+  absolute `recovery_path` (a restorable JSON export). Job status in memory only (documented in every job).
+- Endpoints: `POST /estimates` (never sends), `POST /runs` (202 + Location), `GET /runs` (paginated),
+  `GET /runs/{job_id}` (short ids). Gates for agent=gemini, in order: server `--allow-real-runs` (else 403
+  real_runs_disabled), confirm=true (422), budget required and ≤ server max (422), registration guard
+  (409 registration_mismatch); concurrent run → 409 run_in_progress. Scripted runs: always allowed.
+- `create_app(…, allow_real_runs=False, max_real_budget=100, real_llm_factory, shop_db_path, recovery_dir,
+  sleep)`: everything injected; tests use a fake real factory (the real client is never built).
+- Secrets: messages pass through `redact()` (env values of *KEY/SECRET/TOKEN/PASSWORD* variables, Google
+  key patterns); unexpected errors → 500 internal_error with the error type only, no traceback.
+- `scripts/serve_api.py --allow-real-runs --max-real-budget N` (off by default; still 127.0.0.1 only).
+- Tests: lifecycle, progress mid-run, every gate (factory never called), registration mismatch (real
+  refused, scripted allowed), 8 simultaneous POSTs → exactly one 202 (a sabotaged lock makes all 8
+  start: caught), budget cut mid-task / too small to start / retries counted → incomplete, quota →
+  incomplete, exception → failed with the key redacted, failed save → saved=false + restorable recovery
+  file, restart → job 404 but the suite remains.
+- Limitation: a server stopped in the MIDDLE of a run loses that unfinished run (same as the CLI).
+
 - Dependencies: optional extra `api` = fastapi>=0.110, uvicorn>=0.29; dev + httpx>=0.27 (installed:
   fastapi 0.162.5, uvicorn 0.54.0, httpx 0.28.1). The core framework never imports FastAPI (tested).
 - `src/agentbench/api/` — `create_app(db_path)`, `schemas.py`. Endpoints: /health, /registrations,
@@ -528,6 +556,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 9, Step 9.2 — background SCRIPTED runs (POST /runs → 202 + job id, GET /runs/{job_id}), POST /estimates, one run at a time, real runs only with --allow-real-runs + confirm + budget cap + guard. Waiting for approval. In parallel, any time: A.4 Stage 2 (user-started; 9 tasks, cap 100).
+Phase 9, Step 9.3 — CORS for the local dashboard, error/docs polish, README and architecture. Waiting for approval. In parallel, any time: A.4 Stage 2 via the CLI (user-started; 9 tasks, cap 100).
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

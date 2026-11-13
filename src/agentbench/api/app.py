@@ -1,4 +1,4 @@
-"""AgentBench-Lite web API - Phase 9.1: READ-ONLY endpoints over stored results.
+"""AgentBench-Lite web API - 9.1 read-only endpoints + 9.2 background runs behind safety gates.
 
     app = create_app("data/results.db")       # served on 127.0.0.1 by scripts/serve_api.py
 
@@ -8,23 +8,33 @@ Rules:
   * Each request gets its OWN ResultStore (SQLite connection) through dependency injection,
     opened for that request and closed after it - connections are never shared between threads.
   * Every error has one shape: {"error": {"code", "message", "details"}}.
-  * GET endpoints never change anything. Nothing here calls an LLM.
+  * GET endpoints never change anything.
+  * Runs (9.2): POST /runs starts ONE run at a time in the background (202 + job id). SCRIPTED runs are
+    always allowed. A REAL Gemini run needs ALL FOUR gates: server started with --allow-real-runs,
+    confirm=true, a budget within the server's maximum, and a passing registration guard. The real
+    client is created only inside the job, after the gates - and never in tests (it is injected).
 """
 
-from collections.abc import Iterator
+import re
+import time
+from collections.abc import Callable, Iterator
 from pathlib import Path as FilePath
 
-from fastapi import Depends, FastAPI, Path, Query, Request
+from fastapi import Depends, FastAPI, Path, Query, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from agentbench.analysis import analyze_run, analyze_suite
-from agentbench.api.schemas import (CompareOut, ErrorResponse, FailuresOut, HealthOut, HistoryPage,
-                                    MeasureGroupOut, MeasureOut, Pagination, RateOut, RegisteredSuiteOut,
-                                    RegistrationOut, RunDetailOut, RunSummaryOut, SuiteDetailOut, SuitePage,
-                                    SuiteSummaryOut, TaskOutcomesOut)
+from agentbench.api.jobs import JobManager, RunInProgressError
+from agentbench.api.schemas import (CompareOut, ErrorResponse, EstimateOut, FailuresOut, HealthOut, HistoryPage,
+                                    JobOut, JobPage, MeasureGroupOut, MeasureOut, Pagination, RateOut,
+                                    RegisteredSuiteOut, RegistrationOut, RunDetailOut, RunIn, RunSummaryOut,
+                                    SuiteDetailOut, SuitePage, SuiteSummaryOut, TaskOutcomesOut)
+from agentbench.datasets import DEFAULT_DB_PATH
+from agentbench.report import RESULTS_DIR
+from agentbench.runs import RunPlan, RunRequestError, gemini_client, gemini_config, plan_run, redact, scripted_parts
 from agentbench.measurement import MEASURE_LIMITATIONS, measure_task
 from agentbench.metrics import compute_metrics
 from agentbench.models import SuiteResult
@@ -39,7 +49,15 @@ SUITE_ID = r"^[0-9A-Za-z_-]{4,64}$"
 TASK_ID = r"^[0-9A-Za-z_.-]{1,64}$"
 MAX_LIMIT = 100
 MAX_COMPARE = 5
-ERRORS = {404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}, 422: {"model": ErrorResponse}}
+JOB_ID = r"^[0-9a-f]{4,32}$"
+DEFAULT_MAX_REAL_BUDGET = 100
+ERRORS = {code: {"model": ErrorResponse} for code in (403, 404, 409, 422)}
+
+
+def default_real_llm_factory():
+    """(model id, LLM factory) for a REAL Gemini run. Called only inside a job, after all four gates."""
+    client = gemini_client()
+    return client.model, (lambda task, repeat: client)
 
 
 class ApiError(Exception):
@@ -86,14 +104,26 @@ def _known_task(store: ResultStore, task_id: str) -> None:
                        {"known_suites": {name: [t.id for t in tasks] for name, tasks in SUITES.items()}})
 
 
-def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB) -> FastAPI:
+def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs: bool = False,
+               max_real_budget: int = DEFAULT_MAX_REAL_BUDGET,
+               real_llm_factory: Callable[[], tuple] = default_real_llm_factory,
+               shop_db_path: str | FilePath = DEFAULT_DB_PATH, recovery_dir: str | FilePath = RESULTS_DIR,
+               sleep: Callable[[float], None] = time.sleep) -> FastAPI:
+    """Everything the app depends on is injected: tests pass a temporary database, a fake "real" LLM
+    factory and a no-op sleep, so no real client is ever built and nothing waits."""
+    if max_real_budget < 1:
+        raise ValueError("max_real_budget must be at least 1")
     app = FastAPI(
         title="AgentBench-Lite API",
-        version="0.9.1",
-        description="Read-only access to stored benchmark runs, traces, failure analysis and comparisons. "
-                    "Scripted runs are fixed test fixtures, not AI. Local use only (127.0.0.1).",
+        version="0.9.2",
+        description="Stored benchmark runs, traces, failure analysis and comparisons, plus background runs "
+                    "(one at a time). Scripted runs are fixed test fixtures, not AI. Real Gemini runs are OFF "
+                    "unless the server is started with --allow-real-runs. Local use only (127.0.0.1).",
     )
     app.state.db_path = FilePath(db_path)
+    app.state.allow_real_runs = allow_real_runs
+    app.state.max_real_budget = max_real_budget
+    app.state.jobs = JobManager(results_db=FilePath(db_path), recovery_dir=FilePath(recovery_dir), sleep=sleep)
 
     # ---------- dependency injection: one ResultStore per request ----------------------------
     def get_store() -> Iterator[ResultStore]:
@@ -127,12 +157,17 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB) -> FastAPI:
 
     @app.exception_handler(StorageError)
     async def _storage_error(request: Request, exc: StorageError):
-        return _error(503, "storage_unavailable", str(exc))
+        return _error(503, "storage_unavailable", redact(str(exc)))
+
+    @app.exception_handler(Exception)
+    async def _unexpected(request: Request, exc: Exception):
+        # Never a traceback, never a secret: only the error type.
+        return _error(500, "internal_error", f"unexpected server error ({type(exc).__name__})")
 
     # ---------- endpoints ------------------------------------------------------------------------
     @app.get("/health", response_model=HealthOut, tags=["meta"])
     def health(store: ResultStore = Depends(get_store)) -> HealthOut:
-        return HealthOut(status="ok", schema_version=SCHEMA_VERSION, real_runs_enabled=False)
+        return HealthOut(status="ok", schema_version=SCHEMA_VERSION, real_runs_enabled=app.state.allow_real_runs)
 
     @app.get("/registrations", response_model=list[RegisteredSuiteOut], tags=["meta"])
     def registrations() -> list[RegisteredSuiteOut]:
@@ -227,7 +262,6 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB) -> FastAPI:
     @app.get("/compare", response_model=CompareOut, responses=ERRORS, tags=["suites"])
     def compare_suites(ids: list[str] = Query(..., description=f"2 to {MAX_COMPARE} suite ids (repeat ?ids=)"),
                        store: ResultStore = Depends(get_store)) -> CompareOut:
-        import re
         bad = [i for i in ids if not re.fullmatch(SUITE_ID, i)]
         if bad:
             raise ApiError(422, "validation_error", "invalid suite id(s)", {"ids": bad})
@@ -255,5 +289,85 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB) -> FastAPI:
             dimensions={label: [str(get(s)) for s in suites]
                         for label, get in {**CONFIG_DIMENSIONS, **FAIRNESS_DIMENSIONS}.items()},
             metrics=metrics, tasks=tasks)
+
+    # ---------- 9.2: estimates and background runs ------------------------------------------------------
+    def make_plan(body: RunIn) -> RunPlan:
+        try:
+            return plan_run(body.agent, body.suite, body.tasks, repeats=body.repeats,
+                            budget=body.budget if body.agent == "gemini" else None, db_path=shop_db_path)
+        except RunRequestError as exc:
+            raise ApiError(422, "validation_error", str(exc), {"field": exc.field}) from None
+
+    def gate_failures(body: RunIn, plan: RunPlan) -> list[tuple[int, str, str]]:
+        """Every reason a run must NOT start, as (status, code, message) - empty = allowed."""
+        problems = []
+        if plan.is_real:
+            if not app.state.allow_real_runs:
+                problems.append((403, "real_runs_disabled", "real Gemini runs are disabled on this server "
+                                 "(start it with --allow-real-runs to enable them)"))
+            if not body.confirm:
+                problems.append((422, "confirmation_required", "a real run needs confirm=true"))
+            if body.budget is None:
+                problems.append((422, "budget_required", "a real run needs a budget (the hard request cap)"))
+            elif body.budget > app.state.max_real_budget:
+                problems.append((422, "budget_too_high", f"budget {body.budget} is above this server's maximum "
+                                 f"of {app.state.max_real_budget} requests"))
+        if plan.guard.blocks_real_runs and plan.is_real:
+            problems.append((409, "registration_mismatch", plan.guard.line()))
+        return problems
+
+    @app.post("/estimates", response_model=EstimateOut, responses=ERRORS, tags=["runs"])
+    def estimate(body: RunIn) -> EstimateOut:
+        """What a run would cost and whether it would be allowed. Never sends anything."""
+        plan = make_plan(body)
+        g = plan.guard
+        r = g.registration or {}
+        est = plan.estimate
+        return EstimateOut(
+            agent=body.agent, kind="real" if plan.is_real else "scripted", suite=plan.suite,
+            tasks=[t.id for t in plan.tasks], runs=plan.total_runs,
+            estimate=None if est is None else {"typical_requests": est.typical_requests,
+                                               "worst_case_requests": est.worst_case_requests,
+                                               "budget": est.budget, "estimated_seconds": est.estimated_seconds},
+            registration=RegistrationOut(status=g.status, line=g.line(), problems=g.problems, notes=g.notes,
+                                         version=r.get("version"), suite_fingerprint=r.get("suite_fingerprint")),
+            real_runs_enabled=app.state.allow_real_runs, allowed=not gate_failures(body, plan),
+            reasons=[message for _, _, message in gate_failures(body, plan)])
+
+    @app.post("/runs", status_code=202, response_model=JobOut, responses=ERRORS, tags=["runs"])
+    def start_run(body: RunIn, response: Response) -> JobOut:
+        """Start a run in the background (one at a time). Poll GET /runs/{job_id} for progress."""
+        plan = make_plan(body)
+        failures = gate_failures(body, plan)
+        if failures:                                       # the FIRST failing gate decides the status code
+            status, code, message = failures[0]
+            raise ApiError(status, code, message, {"all_reasons": [m for _, _, m in failures]})
+        if plan.is_real:
+            def prepare():
+                model, make_llm = real_llm_factory()         # built HERE (in the job), after every gate
+                return gemini_config(model), make_llm
+        else:
+            def prepare():
+                return scripted_parts(body.agent)
+        try:
+            job = app.state.jobs.start(plan, prepare)
+        except RunInProgressError as exc:
+            raise ApiError(409, "run_in_progress", str(exc), {"active_job_id": exc.active.id}) from None
+        response.headers["Location"] = f"/runs/{job.id}"
+        return JobOut(**app.state.jobs.get(job.id))
+
+    @app.get("/runs", response_model=JobPage, tags=["runs"])
+    def list_runs(limit: int = Query(20, ge=1, le=MAX_LIMIT), offset: int = Query(0, ge=0)) -> JobPage:
+        """Jobs started since THIS server started (job status is not kept across restarts)."""
+        items, pagination = _paginate(app.state.jobs.list(), limit, offset)
+        return JobPage(items=[JobOut(**j) for j in items], pagination=pagination)
+
+    @app.get("/runs/{job_id}", response_model=JobOut, responses=ERRORS, tags=["runs"])
+    def get_run_job(job_id: str = Path(pattern=JOB_ID)) -> JobOut:
+        job = app.state.jobs.get(job_id)
+        if job is None:
+            raise ApiError(404, "not_found", f"no job {job_id!r} on this server. Job status is kept in memory "
+                           "only (lost on restart); finished results are in GET /suites.", {"job_id": job_id})
+        return JobOut(**job)
 
     return app

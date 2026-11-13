@@ -85,9 +85,13 @@ Evaluators decide **whether it was right** (`EvaluationResult`, list of `Check`s
 
 `src/agentbench/api/` is a thin layer: every endpoint calls existing framework functions and returns their
 Pydantic models as JSON. One `ResultStore` per request (dependency injection); one error shape; pagination
-on lists; local only (127.0.0.1). Step 9.1 is read-only. Planned 9.2: background scripted runs via
-`POST /runs` (202 + job id, job status in memory, results in SQLite); real runs only when the server is
-started with `--allow-real-runs` and the request passes confirm + budget cap + registration guard.
+on lists; local only (127.0.0.1).
+
+Runs (9.2): `POST /runs` → 202 + job id; a `JobManager` starts ONE background thread at a time (the
+active check and job creation are atomic under a lock). Job status lives in memory; results go to
+SQLite (or a JSON recovery file). CLI and API share `agentbench/runs.py` (validation, registration guard,
+estimate, Gemini setup, execution), so both enforce the same rules. Real runs need the server flag
+`--allow-real-runs`, `confirm`, a budget ≤ the server maximum, and a passing guard.
 
 ## Result storage (Phase 7)
 
