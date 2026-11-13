@@ -45,5 +45,7 @@ TypeScript then shows every place in the dashboard that must follow the change.
 | `src/api/client.ts` | the only code that calls the API; one `ApiError` for every failure |
 | `src/api/useApi.ts` | a small hook: loading / error / ready state for one request |
 | `src/api/schema.d.ts` | generated TypeScript types (from `openapi.json`) |
-| `src/pages/` | pages (Step 10.1: the API connection page) |
-| `src/test/` | test setup and a fake `fetch` (tests never call a server) |
+| `src/pages/` | Runs (`/`), run details (`/suites/:id`), trace viewer (`/suites/:id/runs/:runId`), connection |
+| `src/components/ui.tsx` | badges (REAL/SCRIPTED, outcome, complete), card, loading/error box |
+| `src/format.ts` | display only: UTC times, `n/a` for unknown values, server counts |
+| `src/test/` | test setup, a fake `fetch`, and fixtures typed with the contract types |

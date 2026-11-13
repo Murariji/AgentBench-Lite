@@ -23,7 +23,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **Benchmarks** | Run task suites, compute metrics, compare agent configurations, free-tier safety | ✅ Implemented |
 | **Storage** | SQLite history of every run, trace and check; queries and a results CLI | ✅ Implemented |
 | **API** | FastAPI REST backend over the framework and storage | ✅ Implemented (local) |
-| **Dashboard** | React + TypeScript UI for runs, traces and charts | 🔶 In progress (setup + API connection) |
+| **Dashboard** | React + TypeScript UI for runs, traces and charts | 🔶 In progress (runs, details, traces) |
 
 ## Implemented so far
 

@@ -15,9 +15,27 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Phase 10 — React dashboard: 🔶 in progress. Step 10.1 setup + connection page ✅** (dashboard: 9 tests
-passed, type check clean, build OK; Python: 701 passed, 0 failed, 0 skipped — when run by Claude; user to
-confirm). Step 10.2 (runs, run details, trace viewer) waits for approval.
+**Phase 10 — React dashboard: 🔶 in progress. Steps 10.1 ✅ and 10.2 ✅** (dashboard: 20 tests passed, type
+check clean, build OK; Python: 701 passed — when run by Claude; user to confirm). Step 10.3 (failures,
+compare, task history + charts) waits for approval AND the subset decision (A or B) for the chart.
+
+**Step 10.2 Runs, run details, trace viewer: ✅ complete.**
+- React Router 6.28.0 (the only new package). Routes: `/` runs, `/suites/:suiteId` details,
+  `/suites/:suiteId/runs/:runId` trace, `/connection`, and a not-found page.
+- Runs: server pagination (limit/offset, Previous/Next from `pagination`), "real only" filter sent to the
+  API, page + filter in the URL; REAL/SCRIPTED and complete/INCOMPLETE badges; the server's pass-rate text.
+- Run details: registration banner (matches / SUBSET … NOT a full-suite result / differs / unregistered),
+  incomplete note (infra + skipped not counted as wrong answers), metrics as the server's COUNTS (no % in the
+  browser), configuration + fingerprints, tools or "not recorded", task table with retries "not recorded"
+  (never 0), failed checks, links to traces, skipped runs.
+- Trace viewer: every step (timestamp, tokens, model text), tool name, SQL in a code block, output or error,
+  evaluation checks with reasons, failure analysis (category + evidence, additional signals, near misses,
+  "likely patterns" note), infra errors not analysed.
+- Contract detail found by TypeScript: list fields with backend defaults (`signals`, `steps`, `arguments`…)
+  are OPTIONAL in the contract; the pages treat a missing list as empty (no backend change).
+- Tests: typed fixtures (compile against the contract), real routes in a MemoryRouter, fake fetch; a
+  sabotage check (showing unrecorded retries as 0) fails a test.
+
 - Verified first: the trace endpoint and offset pagination already exist; the pass-rate chart has the data,
   but run summaries don't say whether a run was a SUBSET — decision (fetch details per point, or add
   `tasks_fingerprint` + `registration_status` to SuiteSummaryOut via a deliberate contract update) needed
@@ -599,6 +617,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 10, Step 10.2 — runs list (paginated), run details, trace viewer (React Router). Waiting for approval. Before 10.3: decide how the chart identifies subset runs. In parallel, any time: A.4 Stage 2.
+Phase 10, Step 10.3 — failures page, compare page, task history + measure, charts (Recharts). Waiting for approval, and for the subset decision: (A) fetch /suites/{id} per chart point, or (B) add tasks_fingerprint + registration_status to SuiteSummaryOut via update_api_contract.py --reason. In parallel: A.4 Stage 2.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

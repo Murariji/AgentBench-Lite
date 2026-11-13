@@ -6,6 +6,13 @@ export type Schemas = components["schemas"];
 export type Health = Schemas["HealthOut"];
 export type Index = Schemas["IndexOut"];
 export type ErrorBody = Schemas["ErrorBody"];
+export type SuitePage = Schemas["SuitePage"];
+export type SuiteSummary = Schemas["SuiteSummaryOut"];
+export type SuiteDetail = Schemas["SuiteDetailOut"];
+export type RunSummary = Schemas["RunSummaryOut"];
+export type RunDetail = Schemas["RunDetailOut"];
+export type Rate = Schemas["Rate"];
+export type Signal = Schemas["Signal"];
 
 // Where the API runs. Override with VITE_API_BASE in dashboard/.env.local if you changed the port.
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
@@ -57,7 +64,18 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+export const PAGE_SIZE = 20;
+
 export const api = {
   health: () => request<Health>("/health"),
   index: () => request<Index>("/"),
+  /** GET /suites - newest first, paginated by the server (limit/offset). */
+  suites: ({ offset = 0, limit = PAGE_SIZE, realOnly = false } = {}) => {
+    const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (realOnly) query.set("real_only", "true");
+    return request<SuitePage>(`/suites?${query}`);
+  },
+  suite: (suiteId: string) => request<SuiteDetail>(`/suites/${encodeURIComponent(suiteId)}`),
+  run: (suiteId: string, runId: string) =>
+    request<RunDetail>(`/suites/${encodeURIComponent(suiteId)}/runs/${encodeURIComponent(runId)}`),
 };

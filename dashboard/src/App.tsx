@@ -1,18 +1,43 @@
+import { BrowserRouter, Link, NavLink, Route, Routes } from "react-router-dom";
 import { ConnectionPage } from "./pages/ConnectionPage";
+import { RunDetailsPage } from "./pages/RunDetailsPage";
+import { RunsPage } from "./pages/RunsPage";
+import { TraceViewerPage } from "./pages/TraceViewerPage";
 
-// Step 10.1: one page. Routing (several pages) arrives in Step 10.2.
-export function App() {
+const nav = ({ isActive }: { isActive: boolean }) =>
+  `rounded px-2 py-1 text-sm ${isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
+
+/** The pages, by URL. Kept separate from BrowserRouter so tests can render them in a MemoryRouter. */
+export function AppRoutes() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-baseline gap-3 px-4 py-3">
-          <h1 className="text-xl font-bold">AgentBench-Lite</h1>
-          <span className="text-sm text-slate-500">AI agent evaluation &amp; reliability - local dashboard</span>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
+          <Link to="/" className="text-xl font-bold">AgentBench-Lite</Link>
+          <nav className="flex gap-1" aria-label="main">
+            <NavLink to="/" end className={nav}>Runs</NavLink>
+            <NavLink to="/connection" className={nav}>API connection</NavLink>
+          </nav>
+          <span className="ml-auto text-xs text-slate-500">local dashboard · displays the API, computes nothing</span>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        <ConnectionPage />
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        <Routes>
+          <Route path="/" element={<RunsPage />} />
+          <Route path="/suites/:suiteId" element={<RunDetailsPage />} />
+          <Route path="/suites/:suiteId/runs/:runId" element={<TraceViewerPage />} />
+          <Route path="/connection" element={<ConnectionPage />} />
+          <Route path="*" element={<p role="alert">Page not found. <Link to="/" className="text-sky-700 underline">All runs</Link></p>} />
+        </Routes>
       </main>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }

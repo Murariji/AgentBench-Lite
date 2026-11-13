@@ -46,3 +46,26 @@ that was not in the approved list (`user-event`) — replaced with `fireEvent`, 
 2. What does the dashboard show when the API is not running, and where does that message come from?
 3. Why does the dashboard's code call `fetch` in exactly one file?
 4. Why can the browser on localhost:5173 read `/health`, but a page on another site cannot?
+
+## Step 10.2 — pages and URLs
+
+| Concept | In plain words |
+|---|---|
+| routing | the URL picks the page (`/suites/42daa8df`) without reloading the app; back button works |
+| URL parameter | `:suiteId` in `/suites/:suiteId`, read with `useParams()` |
+| query string | page + filter in the URL (`/?offset=20&real_only=true`), read with `useSearchParams()` |
+| dependencies | `useApi(load, [suiteId])` loads again when the suite id changes |
+| typed fixtures | the fake API answers in tests use the contract types: a mismatch does not compile |
+
+**Display only:** the run list shows the server's pass-rate text; the details page shows the server's
+counts ("9 / 9") and computes no percentage; unknown values show as "n/a" or "not recorded", never 0.
+
+**A contract detail TypeScript found:** fields with defaults on the backend (`signals`, `trace.steps`,
+`arguments`…) are OPTIONAL in the contract. The API always sends them, but the dashboard must not rely on
+more than the contract promises, so a missing list is treated as empty.
+
+## Self-check (10.2)
+5. Why are the page offset and the "real only" filter kept in the URL?
+6. Why does the details page show "2 / 2" instead of "100%"?
+7. What does the Runs page show for a run with an infrastructure error, and why is it not a failure?
+8. Why must the test fixtures be typed with the generated contract types?

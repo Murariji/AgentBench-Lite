@@ -1,6 +1,6 @@
-// A tiny React "hook": load data from the API when a component appears, and remember
-// loading / error / data in state. Plain fetch + useState + useEffect - no extra library.
-import { useCallback, useEffect, useState } from "react";
+// A tiny React "hook": load data from the API when a component appears - and again whenever one of
+// its inputs (`deps`, e.g. the suite id or the page offset) changes. Plain fetch + useState + useEffect.
+import { type DependencyList, useCallback, useEffect, useState } from "react";
 import { ApiError } from "./client";
 
 export type ApiState<T> =
@@ -8,12 +8,12 @@ export type ApiState<T> =
   | { status: "error"; error: ApiError }
   | { status: "ready"; data: T };
 
-export function useApi<T>(load: () => Promise<T>): ApiState<T> & { reload: () => void } {
+export function useApi<T>(load: () => Promise<T>, deps: DependencyList = []): ApiState<T> & { reload: () => void } {
   const [state, setState] = useState<ApiState<T>>({ status: "loading" });
-  const [attempt, setAttempt] = useState(0); // changing this number re-runs the effect
+  const [attempt, setAttempt] = useState(0); // changing this number re-runs the effect ("Try again")
 
   useEffect(() => {
-    let active = true; // ignore answers that arrive after the component is gone
+    let active = true; // ignore answers that arrive after the inputs changed or the page closed
     setState({ status: "loading" });
     load()
       .then((data) => active && setState({ status: "ready", data }))
@@ -26,9 +26,9 @@ export function useApi<T>(load: () => Promise<T>): ApiState<T> & { reload: () =>
     return () => {
       active = false;
     };
-    // `load` is expected to be stable for a given page; `attempt` triggers a reload.
+    // `load` is rebuilt on every render; the real inputs are listed in `deps`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt]);
+  }, [attempt, ...deps]);
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
   return { ...state, reload };
