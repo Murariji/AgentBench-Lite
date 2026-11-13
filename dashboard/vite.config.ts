@@ -13,5 +13,7 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     // R1: keep the real text of index.css in tests (vitest blanks CSS by default) - contrast.test.ts reads its tokens.
     css: { include: [/index\.css/] },
+    // Pages load on demand; the FIRST load of a page in a full parallel run can take several seconds.
+    testTimeout: 20000,
   },
 });

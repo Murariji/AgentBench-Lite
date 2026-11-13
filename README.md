@@ -3,10 +3,13 @@
 **An AI Agent Evaluation & Reliability Platform** — run LLM-powered agents on tasks,
 record every step, measure performance, analyze why they fail, and view it all in a dashboard.
 
-> **Status: active development.** The Python framework (agent loop, Gemini + FakeLLM, SQL tools,
-> evaluators, benchmark runner, metrics, comparison) and SQLite result storage exist today;
-> failure analysis, the API and the dashboard are next.
-> Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
+> **Status:** the framework (agent loop, Gemini + FakeLLM, SQL tools, evaluators, benchmark runner,
+> metrics, comparison), SQLite storage, failure analysis, the local API and the dashboard are implemented.
+> Docker packaging is next. Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
+
+![Overview page of the AgentBench-Lite dashboard in dark mode, showing real stored benchmark runs](docs/screenshots/overview-dark.png)
+
+*The dashboard's Overview with real stored runs (more in [Screenshots](#screenshots)).*
 
 ## What it will do
 
@@ -262,15 +265,38 @@ Full reference: **[docs/api.md](docs/api.md)** — endpoints, error codes, job s
 CORS (only the React dev origins `http://localhost:5173` / `http://127.0.0.1:5173`, never `*`), the 64 KB
 request limit, and the pinned API contract that the dashboard relies on.
 
-## Dashboard (in progress)
+## Dashboard
 
 ```powershell
-python scripts/serve_api.py          # terminal 1: the API
-cd dashboard; npm install; npm run dev   # terminal 2: open http://localhost:5173
+python scripts/serve_api.py                   # terminal 1: the API (add --allow-real-runs for Gemini runs)
+cd dashboard; npm install; npm run dev        # terminal 2: open http://localhost:5173
 ```
 
-React + TypeScript + Tailwind, with types generated from the API's pinned contract. It only displays and
-requests; all logic stays in the backend. See [dashboard/README.md](dashboard/README.md).
+React + TypeScript + Tailwind + Recharts, with types generated from the API's pinned contract. It only
+displays and requests; all logic stays in the backend. Light, dark and System themes; every page is loaded
+on demand. See [dashboard/README.md](dashboard/README.md).
+
+### Screenshots
+
+Every screenshot shows **real data** from this project's stored results (read through the local API):
+Gemini `gemini-3.5-flash-lite` runs on the `shop` and pre-registered `shop-hard` suites, plus two SCRIPTED
+test agents. Nothing is mocked. Light and dark themes are shown on different pages.
+
+| | |
+|---|---|
+| **Overview (dark)** – server counts, latest real full-suite run, pass-rate chart, suites, recent runs | **Overview (light)** – the same page in the light theme |
+| ![Overview, dark theme](docs/screenshots/overview-dark.png) | ![Overview, light theme](docs/screenshots/overview-light.png) |
+| **Runs** – one comparable trend line (three real full-suite runs); subset and unregistered runs are separate markers; filters by suite, real/scripted, scope and status | **Compare** – the server's fairness verdict and conclusions for three real runs, shown word for word |
+| ![Runs page](docs/screenshots/runs-light.png) | ![Compare page](docs/screenshots/compare-light.png) |
+| **Start a run** – guided: configure → estimate → confirm & start; every safety gate is checked by the server | **Live progress** – a real Gemini run in progress: task, requests used against the budget (retries included), elapsed time |
+| ![Start a run](docs/screenshots/start-run-dark.png) | ![Live run progress](docs/screenshots/live-progress-dark.png) |
+| **Run details** – registration check, the server's metrics, configuration fingerprints, every task | **Trace viewer** – every step: tool calls, SQL, outputs, evaluation checks |
+| ![Run details](docs/screenshots/run-details-dark.png) | ![Trace viewer](docs/screenshots/trace-light.png) |
+| **Failure analysis** – rule-based categories for the SCRIPTED sloppy agent (it falls into planted traps on purpose) | **Task history** – one task across all runs, with the exploratory before/after table and its limitations |
+| ![Failure analysis](docs/screenshots/failures-dark.png) | ![Task history](docs/screenshots/task-history-light.png) |
+
+What the screenshots also show honestly: every real run so far scores 100%, so these suites do not yet
+separate this model's performance (see [Evaluation limitations](#evaluation-limitations)).
 
 ## Tech stack
 

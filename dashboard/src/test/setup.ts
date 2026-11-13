@@ -4,7 +4,7 @@ import { afterEach, vi } from "vitest";
 import { cleanup, configure } from "@testing-library/react";
 
 // Pages are loaded on demand (code splitting); the first load of a page in a test run can take a moment.
-configure({ asyncUtilTimeout: 5000 });
+configure({ asyncUtilTimeout: 15000 });
 
 afterEach(() => {
   cleanup();

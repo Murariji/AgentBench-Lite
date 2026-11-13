@@ -284,11 +284,14 @@ def _iso(value: datetime | None) -> str | None:
 
 
 class ResultStore:
-    def __init__(self, path: str | Path = DEFAULT_RESULTS_DB) -> None:
+    def __init__(self, path: str | Path = DEFAULT_RESULTS_DB, *, check_same_thread: bool = True) -> None:
+        """check_same_thread=False is for the web API ONLY: FastAPI may open a request's connection in one
+        worker thread and close it in another. Safe there because each request has its OWN connection that
+        is never used by two threads at the same time."""
         if str(path) != ":memory:":
             Path(path).parent.mkdir(parents=True, exist_ok=True)
         # isolation_level=None: WE decide where transactions begin and end (BEGIN / COMMIT).
-        self._conn = sqlite3.connect(str(path), isolation_level=None)
+        self._conn = sqlite3.connect(str(path), isolation_level=None, check_same_thread=check_same_thread)
         self._conn.row_factory = sqlite3.Row            # rows readable by column name
         self._conn.execute("PRAGMA foreign_keys = ON")  # OFF by default in SQLite, per connection!
         self._prepare_schema()

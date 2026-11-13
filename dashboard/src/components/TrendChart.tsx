@@ -2,7 +2,7 @@
 // every non-comparable run is a separate, unconnected marker. Values are the server's, unchanged.
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CartesianGrid, Legend, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import { CHART_RUN_LIMIT, type ChartRuns } from "../api/client";
 import type { ApiState } from "../api/useApi";
 import { buildTrend, type MarkerKind, type TrendPoint } from "../charts/trend";
@@ -18,6 +18,28 @@ const MARKERS: Record<MarkerKind, { label: string; shape: "circle" | "cross" | "
   incomplete: { label: "incomplete", shape: "triangle", color: "rgb(var(--warning-fg))" },
   unknown: { label: "task set unknown", shape: "diamond", color: "rgb(var(--muted))" },
 };
+
+/** Evenly spaced time ticks with a small margin, so no point sits on the chart's edge (axis labels only). */
+export function timeAxis(xs: number[], count = 6): { domain: [number, number]; ticks: number[] } {
+  const min = Math.min(...xs), max = Math.max(...xs);
+  const pad = max > min ? (max - min) * 0.04 : 3_600_000;
+  const lo = min - pad, hi = max + pad;
+  return { domain: [lo, hi], ticks: Array.from({ length: count }, (_, i) => Math.round(lo + ((hi - lo) * i) / (count - 1))) };
+}
+
+function Shape({ shape, color }: { shape: string; color: string }) {
+  const p = { fill: color };
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className="flex-none">
+      {shape === "circle" && <circle cx="6" cy="6" r="5" {...p} />}
+      {shape === "square" && <rect x="1" y="1" width="10" height="10" {...p} />}
+      {shape === "diamond" && <polygon points="6,0 12,6 6,12 0,6" {...p} />}
+      {shape === "triangle" && <polygon points="6,1 11,11 1,11" {...p} />}
+      {shape === "cross" && <path d="M2 2l8 8M10 2l-8 8" stroke={color} strokeWidth="2.5" />}
+      {shape === "line" && <><line x1="0" y1="6" x2="12" y2="6" stroke={color} strokeWidth="2" /><circle cx="6" cy="6" r="3.5" {...p} /></>}
+    </svg>
+  );
+}
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;      // axis LABEL only; the plotted value is unchanged
 
@@ -84,13 +106,13 @@ export function TrendChart({ runs }: { runs: ApiState<ChartRuns> & { reload: () 
 
               {allPoints.length > 0 && (
                 <div ref={box} className="overflow-x-auto" role="img" aria-label={summary}>
-                  <ScatterChart width={width} height={300} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+                  <ScatterChart width={width} height={300} margin={{ top: 20, right: 24, bottom: 8, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" dataKey="x" domain={["dataMin", "dataMax"]} scale="time" name="started"
-                           tickFormatter={(v: number) => utc(new Date(v).toISOString()).slice(5, 16)} tick={{ fontSize: 10 }} />
-                    <YAxis type="number" dataKey="rate" domain={[0, 1]} tickFormatter={pct} name="pass rate" />
+                    <XAxis type="number" dataKey="x" {...timeAxis(allPoints.map((p) => p.x))} name="started"
+                           tickFormatter={(v: number) => utc(new Date(v).toISOString()).slice(5, 16)} tick={{ fontSize: 12 }} />
+                    <YAxis type="number" dataKey="rate" domain={[0, 1]} ticks={[0, 0.25, 0.5, 0.75, 1]} tickFormatter={pct}
+                           name="pass rate" tick={{ fontSize: 12 }} width={48} />
                     <Tooltip content={<Tip />} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
                     {t.groups.map((g, i) => (
                       <Scatter key={g.key} name={g.baseline ? `${g.label} (baseline)` : g.label} data={g.points}
                                line={!g.baseline} fill={LINE_COLORS[i % LINE_COLORS.length]} isAnimationActive={false}
@@ -105,6 +127,18 @@ export function TrendChart({ runs }: { runs: ApiState<ChartRuns> & { reload: () 
                     })}
                   </ScatterChart>
                 </div>
+              )}
+              {allPoints.length > 0 && (
+                <ul aria-label="legend" className="flex flex-wrap gap-x-5 gap-y-1.5 text-[13px]">
+                  {t.groups.map((g, i) => (
+                    <li key={g.key} className="flex items-center gap-1.5">
+                      <Shape shape="line" color={LINE_COLORS[i % LINE_COLORS.length]!} />{g.baseline ? `${g.label} (baseline)` : g.label}
+                    </li>
+                  ))}
+                  {(Object.keys(MARKERS) as MarkerKind[]).filter((k) => t.markers.some((m) => m.marker === k)).map((k) => (
+                    <li key={k} className="flex items-center gap-1.5"><Shape shape={MARKERS[k].shape} color={MARKERS[k].color} />{MARKERS[k].label}</li>
+                  ))}
+                </ul>
               )}
 
               <details className="text-sm">

@@ -41,6 +41,20 @@ Python: 720 passed — when run by Claude; user to confirm).
 - Today's real data has no comparable trend yet (pilot is a subset, `shop` runs are unregistered), so the chart
   shows markers and says so. Known: bundle 606 KB (Recharts) — lazy-loading planned for 10.5.
 
+**README screenshots: ✅ added** (`docs/screenshots/`, 10 images, real stored data only, both themes; taken with
+headless Edge against a COPY of the results database with real runs disabled - no API quota used).
+Bugs found while taking them, fixed with regression tests (Python 725 passed, dashboard 145 passed):
+- API: FastAPI could close a request's SQLite connection in a different worker thread than it opened it ->
+  sqlite3.ProgrammingError -> HTTP 500 for ~40% of simultaneous requests (the Overview sends several at once).
+  Fix: the per-request connection allows a close from another thread (`check_same_thread=False`, never shared).
+  Test: 200 simultaneous requests through a real uvicorn server (fails without the fix - verified).
+- API: the catch-all 500 handler runs outside the CORS middleware, so browsers showed a misleading CORS error
+  instead of the JSON error. Fix + test: allowed origins get the CORS header on a 500 too; others never.
+- Dashboard: charts measured their box before it existed (stayed 760 px, newest points cut off on Overview).
+  Fix: callback ref; test. Chart: evenly spaced time ticks, no clipped points, wrapping legend.
+  Task history: readable axis labels (run id; time in the tooltip/table).
+Restart the API (`python scripts/serve_api.py ...`) to use the server fixes.
+
 **Redesign R2–R6 (whole dashboard): ✅ complete** (dashboard: 144 passed, type check clean, build OK - first load
 188 KB instead of 620 KB, no size warning; Python: 723 passed — when run by Claude; user to confirm).
 - Shell: persistent sidebar (Overview, Runs, Compare, Start a run, API connection; menu on small screens), top bar

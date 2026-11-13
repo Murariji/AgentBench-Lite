@@ -33,7 +33,7 @@ function SuitesCard({ regs, runs }: { regs: ApiState<RegisteredSuite[]> & { relo
                   <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{r.suite}</span>
                     <Badge color="green">registered v{r.version}</Badge></div>
                   <p className="mt-1 text-[13px] text-muted">
-                    {r.tasks.length} tasks · suite <span className="font-mono">{r.suite_fingerprint}</span> · registered at git {r.git_head ?? "not recorded"}
+                    {r.tasks.length} tasks · suite <span className="font-mono">{r.suite_fingerprint}</span> · registered at git {r.git_head ? r.git_head.slice(0, 7) : "not recorded"}
                   </p>
                 </li>
               ))}

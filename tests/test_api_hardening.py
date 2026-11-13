@@ -202,3 +202,66 @@ def test_the_server_refuses_a_wildcard_origin():
 def test_the_server_is_still_local_only():
     text = (ROOT / "scripts" / "serve_api.py").read_text(encoding="utf-8")
     assert 'HOST = "127.0.0.1"' in text and "--host" not in text
+
+
+# ---------- concurrency (found while taking dashboard screenshots) -------------------------------------------
+
+def test_many_simultaneous_requests_through_a_real_server(tmp_path):
+    """The dashboard's Overview sends several requests at once. A real uvicorn server runs them in worker
+    threads and may close a request's SQLite connection in a different thread than it opened it: that used
+    to fail with sqlite3.ProgrammingError (HTTP 500). Every request must succeed."""
+    import concurrent.futures
+    import socket
+    import threading
+    import urllib.request
+
+    import uvicorn
+
+    from agentbench.api import create_app
+    from agentbench.api.app import check_startup
+
+    assert check_startup(tmp_path / "results.db") is None     # exactly like scripts/serve_api.py: schema first
+    app = create_app(tmp_path / "results.db", recovery_dir=tmp_path / "recovery")
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    try:
+        for _ in range(200):
+            if server.started:
+                break
+            threading.Event().wait(0.05)
+        assert server.started
+
+        def get(path):
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=20) as r:
+                return r.status
+        paths = ["/suites?limit=1&offset=0", "/suites?limit=100&offset=0", "/registrations", "/health"] * 50
+        with concurrent.futures.ThreadPoolExecutor(24) as pool:
+            codes = list(pool.map(get, paths))
+        assert codes == [200] * len(paths)
+    finally:
+        server.should_exit = True
+        thread.join(10)
+
+
+def test_an_unexpected_error_still_carries_cors_headers(tmp_path):
+    """Otherwise the browser hides the JSON error and shows a misleading CORS error instead."""
+    from fastapi.testclient import TestClient
+
+    from agentbench.api import create_app
+
+    app = create_app(tmp_path / "results.db", recovery_dir=tmp_path / "recovery")
+
+    def boom():
+        raise RuntimeError("secret detail that must not leak")
+    app.add_api_route("/boom", boom)
+    client = TestClient(app, raise_server_exceptions=False)
+    allowed = client.get("/boom", headers={"Origin": "http://localhost:5173"})
+    assert allowed.status_code == 500
+    assert allowed.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert allowed.json()["error"]["code"] == "internal_error" and "secret" not in allowed.text
+    other = client.get("/boom", headers={"Origin": "http://evil.example"})
+    assert "access-control-allow-origin" not in other.headers                    # never for other origins

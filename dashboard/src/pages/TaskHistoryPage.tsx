@@ -63,11 +63,12 @@ export function TaskHistoryPage() {
             <>
               <Card title={`LLM calls per run (this page: ${items.length} of ${pagination.total})`}>
                 <div className="overflow-x-auto" role="img" aria-label={summary}>
-                  <BarChart width={Math.max(360, bars.length * 70)} height={220} data={bars}
+                  <BarChart width={Math.max(480, bars.length * 110)} height={240} data={bars}
                             margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={0} />
-                    <YAxis allowDecimals={false} />
+                    {/* axis: the run id only (readable); the time is in the tooltip and the table below */}
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} tickFormatter={(l: string) => l.split(" · ")[1] ?? l} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={40} />
                     <Tooltip />
                     <Bar dataKey="llmCalls" name="LLM calls" isAnimationActive={false}>
                       {bars.map((b) => <Cell key={b.key} fill={OUTCOME_COLOR[b.outcome] ?? "rgb(var(--neutral-fg))"} />)}

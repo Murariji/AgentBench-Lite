@@ -242,7 +242,9 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
 
     # ---------- dependency injection: one ResultStore per request ----------------------------
     def get_store() -> Iterator[ResultStore]:
-        store = ResultStore(app.state.db_path)
+        # One connection per request. FastAPI can run this setup and the close() below in DIFFERENT worker
+        # threads, so SQLite's same-thread check is off for this connection (it is never shared).
+        store = ResultStore(app.state.db_path, check_same_thread=False)
         try:
             yield store
         finally:
@@ -277,7 +279,14 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
     @app.exception_handler(Exception)
     async def _unexpected(request: Request, exc: Exception):
         # Never a traceback, never a secret: only the error type.
-        return _error(500, "internal_error", f"unexpected server error ({type(exc).__name__})")
+        response = _error(500, "internal_error", f"unexpected server error ({type(exc).__name__})")
+        # This handler runs OUTSIDE the CORS middleware, so add the header here for an allowed origin:
+        # otherwise the browser hides this JSON and reports a misleading "CORS" network error instead.
+        origin = request.headers.get("origin")
+        if origin in app.state.cors_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Vary"] = "Origin"
+        return response
 
     # ---------- endpoints ------------------------------------------------------------------------
     @app.get("/", response_model=IndexOut, responses=errors(), tags=["meta"])
