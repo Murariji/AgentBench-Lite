@@ -46,3 +46,41 @@ SELF-CHECK
   2. Why are totals over ALL runs but averages over eligible runs?
   3. Explain pass@k vs pass^k with your own example.
   4. Why is make_llm a function instead of one LLM object?
+
+==================================================================
+STEP 6.2 - SCRIPTED AGENTS, COMPARISON, JSON EXPORT
+==================================================================
+SCRIPTED AGENTS (suites/shop_agents.py)
+  careful: correct SQL for all 10 tasks          -> 10/10
+  sloppy : same, but 4 deliberate traps           -> 6/10
+           (shop-003, 004, 007, 009 fail)
+  Their SQL really runs on shop.db, but the answers are written in
+  advance: ZERO intelligence. Purpose: test the pipeline for free.
+  Every report says "SCRIPTED AGENT (not a real AI ...)".
+
+FAIR COMPARISON (report.compare)
+  CONFIG dimensions   : provider, model, prompt hash, max attempts, pacing
+  FAIRNESS dimensions : tasks fingerprint, dataset, repeats (MUST match)
+  fairness differs  -> "NOT A FAIR COMPARISON"
+  one config change -> "Changed dimension: model"
+  several changes   -> WARNING: cannot attribute the difference
+  The config NAME is only a label, not a dimension.
+
+FINGERPRINTS
+  dataset           = sha256 of the database file
+  tasks_fingerprint = sha256 of the FULL task definitions
+                      (prompt, answer, tolerance, tools, max steps)
+  Change one tolerance -> different fingerprint -> not comparable.
+
+JSON EXPORT
+  results/<suite>_<config>_<timestamp>.json, open mode "x"
+  ("x" = create only; never overwrites an old result)
+  load_json() validates again and IGNORES stored metrics
+  (derived data is recomputed, never trusted from a file).
+  Full tasks are saved -> old runs can be RE-GRADED with 0 LLM calls.
+
+SELF-CHECK
+  1. Why does the sloppy agent's 6/10 say nothing about AI ability?
+  2. Two runs have different tasks fingerprints. Can you compare them?
+  3. Why open the export file with "x" instead of "w"?
+  4. Why recompute metrics on load instead of reading them from JSON?

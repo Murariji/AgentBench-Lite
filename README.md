@@ -3,7 +3,8 @@
 **An AI Agent Evaluation & Reliability Platform** — run LLM-powered agents on tasks,
 record every step, measure performance, analyze why they fail, and view it all in a dashboard.
 
-> **Status: early development.** Data models, tools, LLM layer (FakeLLM + Gemini) and the agent loop exist today.
+> **Status: active development.** The Python framework (agent loop, Gemini + FakeLLM, SQL tools,
+> evaluators, benchmark runner, metrics, comparison) exists today; storage, API and dashboard are next.
 > Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
 
 ## What it will do
@@ -18,7 +19,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **Evaluator** | Decide whether the task was completed correctly | ✅ Implemented (deterministic) |
 | **Analyzer** | Categorize failures (wrong tool, bad arguments, loops, wrong answer) | 🗓️ Planned |
 | **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | ✅ Implemented |
-| **Benchmarks** | Run task suites, compute metrics, compare agent configurations | 🗓️ Planned |
+| **Benchmarks** | Run task suites, compute metrics, compare agent configurations | ✅ Implemented (real-LLM suite safety: next) |
 | **API** | FastAPI REST backend with SQLite storage | 🗓️ Planned |
 | **Dashboard** | React + TypeScript UI for runs, traces and charts | 🗓️ Planned |
 
@@ -46,8 +47,19 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 - ✅ Suite runner + metrics (`agentbench.benchmark`, `agentbench.metrics`): run a suite with repeats,
   pass rate over eligible runs, by difficulty, steps / LLM calls / tokens / time, tool errors,
   most-failed checks, pass@k and pass^k
+- ✅ Reports + comparison (`agentbench.report`): text report, side-by-side comparison that checks
+  fairness (same tasks, grading and dataset; which config dimension changed), and lossless JSON
+  export to `results/` so saved runs can be re-graded for free
 
 ## Try the benchmark (free, no API key)
+
+```powershell
+python scripts/run_benchmark.py --compare            # careful vs sloppy scripted agents: 10/10 vs 6/10
+python scripts/run_benchmark.py --agent sloppy --save   # also writes results/<suite>_<config>_<time>.json
+```
+
+The careful and sloppy agents are **scripted** (fixed answers written in advance, not AI). They exist
+to test the benchmark pipeline at zero cost, and every report labels them as such.
 
 ```powershell
 python scripts/run_shop_task.py             # scripted agent solves shop-003  -> PASSED

@@ -1,6 +1,6 @@
 # AgentBench-Lite — Project Status
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 ## Goal
 An **AI Agent Evaluation & Reliability Platform** with three layers:
@@ -15,7 +15,26 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Phase 6 — Step 6.1 Suite runner + metrics: ✅ complete.** Tests: **248 passed** (user-reported; 20 new).
+**Phase 6 — Step 6.2 Scripted agents + comparison + JSON export: ✅ complete.** Tests: **264 passed**
+(user-reported; 16 new).
+- `src/agentbench/suites/shop_agents.py`: scripted `careful` (correct SQL for all 10 tasks) and `sloppy`
+  (same scripts except 4 deliberate traps) FakeLLM agents; SQL runs on the real DB. `scripted_config()`,
+  `scripted_agent()`. Labelled "SCRIPTED AGENT (not a real AI)" in every report.
+- `src/agentbench/report.py`: `format_report()`, `compare()`, `export_json()`, `load_json()`.
+  Comparison separates CONFIG dimensions (provider, model, prompt hash, max attempts, pacing) from
+  FAIRNESS dimensions (tasks fingerprint, dataset, repeats — must match). Prints "NOT A FAIR COMPARISON",
+  "Changed dimension: X", a multi-change warning, or an incomplete-run warning. Config name is not a
+  dimension. Export: `results/<suite>_<config>_<timestamp>.json`, opened with mode `"x"` (never
+  overwrites); `load_json()` re-validates and ignores stored metrics; export → load is lossless.
+- `SuiteResult` gained `tasks` (full definitions, must match `task_ids`), `dataset` (file SHA-256) and the
+  `tasks_fingerprint` property. Saved runs can be re-graded with zero LLM calls (tested).
+- `scripts/run_benchmark.py` (`--agent careful|sloppy`, `--compare`, `--repeats`, `--save`;
+  `--agent gemini` deliberately refused until Step 6.3). User ran: careful **10/10**, sloppy **6/10**
+  (shop-003, 004, 007, 009 failed), 4 rows `<- differs`, "Changed dimension: model"; `--save` wrote
+  `results\shop_sloppy-script_20261113T050954008058Z.json`.
+- Display fixes: `·` showed as `�` in the Windows console → `|`; column widths fit the longest value.
+
+**Step 6.1 Suite runner + metrics: ✅ complete.** Tests: **248 passed** (user-reported; 20 new).
 - `src/agentbench/benchmark.py`: `run_suite(tasks, config, make_llm, tools, suite_name=, repeats=)` —
   sequential, injected LLM factory `(task, repeat) -> LLMClient`, progress lines, every run kept.
 - `src/agentbench/metrics.py`: `compute_metrics(suite) -> SuiteMetrics` — pass rate as passed/eligible
@@ -170,6 +189,9 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 | Benchmark data | Private generated DB | No contamination: answers exist nowhere online |
 | Pass rate | passed / eligible; infra errors and skipped runs reported separately | An agent isn't failed for Google's quota |
 | Suite execution | Sequential, LLM injected per run | Free-tier limits; scripted and real agents share one runner |
+| Comparison fairness | Config dimensions vs. fairness dimensions (tasks fingerprint, dataset, repeats) | Only one variable may change; otherwise say so |
+| Result export | JSON with full tasks, never overwrite; metrics recomputed on load | Free re-grading; files aren't trusted |
+| Scripted agents | Careful/sloppy FakeLLM scripts, always labelled SCRIPTED | Test the pipeline for ₹0 without faking AI results |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
@@ -198,7 +220,8 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 6, Step 6.2 — scripted careful (10/10) and sloppy (falls into 4 traps → 6/10) shop agents,
-text report, side-by-side comparison listing which config dimensions changed, JSON export to
-`results/`, reports labelled SCRIPTED vs REAL LLM. Then 6.3 (pacing, budget, circuit breaker,
-`--yes`). Waiting for user approval.
+Phase 6, Step 6.3 — free-tier safety for real Gemini suite runs: `RateLimitedLLM` (≥ 6 s between
+requests), request estimate + refusal without `--yes`, request budget (default 80), circuit breaker on
+auth / quota_exhausted (remaining runs skipped, suite incomplete), actual vs. estimated requests in the
+report. Open decision: budget enforced as a hard per-request cap (recommended — worst case 8 × 3 = 24
+per task would let only 3 of 10 tasks start under a worst-case pre-check). Waiting for user approval.

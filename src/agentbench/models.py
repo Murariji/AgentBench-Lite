@@ -242,6 +242,24 @@ class SuiteResult(_BaseModel):
     finished_at: datetime | None = None
     records: list[RunRecord] = Field(default_factory=list)
     skipped: list[SkippedRun] = Field(default_factory=list)
+    # For fair comparison and free re-grading later: the FULL task definitions (prompt,
+    # expected answer, tolerances, allowed tools, max steps) and which data was used.
+    tasks: list[Task] = Field(default_factory=list)
+    dataset: str | None = None  # e.g. "shop.db sha256:1a2b3c4d5e6f"
+
+    @model_validator(mode="after")
+    def _tasks_match_ids(self) -> "SuiteResult":
+        if self.tasks and [t.id for t in self.tasks] != self.task_ids:
+            raise ValueError("tasks must be the scheduled tasks, in the same order as task_ids")
+        return self
+
+    @property
+    def tasks_fingerprint(self) -> str | None:
+        """Short hash of the full task definitions: same fingerprint = same tasks AND grading."""
+        if not self.tasks:
+            return None
+        text = "\n".join(t.model_dump_json() for t in self.tasks)
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
     @property
     def scheduled_runs(self) -> int:

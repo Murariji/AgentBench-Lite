@@ -33,6 +33,7 @@ def run_suite(
     *,
     suite_name: str,
     repeats: int = 1,
+    dataset: str | None = None,
     progress: Callable[[str], None] | None = print,
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.perf_counter,
@@ -42,7 +43,8 @@ def run_suite(
         raise ValueError(f"task ids must be unique: {ids}")
     say = progress or (lambda _message: None)
 
-    suite = SuiteResult(suite_name=suite_name, config=config, task_ids=ids, repeats=repeats)
+    suite = SuiteResult(suite_name=suite_name, config=config, task_ids=ids, repeats=repeats,
+                        tasks=tasks, dataset=dataset)
     total, done = len(tasks) * repeats, 0
     for task in tasks:
         for repeat in range(repeats):
