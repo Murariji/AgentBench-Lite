@@ -29,7 +29,7 @@ from pydantic import BaseModel
 
 from agentbench.metrics import Rate
 from agentbench.models import (AgentConfig, Check, EvaluationResult, RetryEvent, RunRecord, RunResult,
-                               ToolSpec, canonical_json,
+                               ToolSpec, canonical_json, tools_fingerprint,
                                SkippedRun, Step, SuiteResult, Task, ToolCall, Trace)
 from agentbench.report import RESULTS_DIR, export_json
 
@@ -250,6 +250,8 @@ class TaskHistoryEntry(BaseModel):
     duration_seconds: float | None = None
     final_answer: str | None = None
     reason: str | None = None      # only for skipped
+    tools_fingerprint: str | None = None   # the suite's tools (Step A.1); None = NOT RECORDED (unknown)
+    tools: list[ToolSpec] | None = None    # the snapshot itself, e.g. to show "calculator v2"
 
 
 @dataclass(frozen=True)
@@ -457,10 +459,18 @@ class ResultStore:
             records=records, skipped=skipped, tasks=tasks, dataset=row["dataset"],
             request_budget=row["request_budget"], estimated_requests=row["estimated_requests"],
             stop_reason=row["stop_reason"],
-            tools=None if not row["tools_recorded"] else [   # 0 = not recorded: unknown, never []
-                ToolSpec.model_validate_json(r["spec_json"]) for r in self._conn.execute(
-                    "SELECT tv.spec_json FROM suite_tools st JOIN tool_versions tv ON tv.tool_hash = st.tool_hash"
-                    " WHERE st.suite_id = ? ORDER BY st.position", (suite_id,))])
+            tools=self.suite_tools(suite_id))
+
+    def suite_tools(self, suite_id: str) -> list[ToolSpec] | None:
+        """The tool snapshot of one suite; None = not recorded (stored before Step A.1), never []."""
+        row = self._conn.execute("SELECT tools_recorded FROM suite_runs WHERE suite_id = ?", (suite_id,)).fetchone()
+        if row is None:
+            raise SuiteNotFoundError(f"no suite with id {suite_id!r}")
+        if not row["tools_recorded"]:
+            return None
+        return [ToolSpec.model_validate_json(r["spec_json"]) for r in self._conn.execute(
+            "SELECT tv.spec_json FROM suite_tools st JOIN tool_versions tv ON tv.tool_hash = st.tool_hash"
+            " WHERE st.suite_id = ? ORDER BY st.position", (suite_id,))]
 
     def resolve(self, prefix: str) -> str:
         """Full suite_id from its first characters (like a short git commit id)."""
@@ -519,7 +529,9 @@ class ResultStore:
             WHERE k.task_id = ?
             ORDER BY 2 DESC, 8
             """, (task_id, task_id)).fetchall()
-        return [TaskHistoryEntry(**dict(row)) for row in rows]
+        tools = {sid: self.suite_tools(sid) for sid in {row["suite_id"] for row in rows}}   # once per suite
+        return [TaskHistoryEntry(**dict(row), tools=tools[row["suite_id"]],
+                                 tools_fingerprint=tools_fingerprint(tools[row["suite_id"]])) for row in rows]
 
     def _load_record(self, row: sqlite3.Row) -> RunRecord:
         run_id = row["run_id"]

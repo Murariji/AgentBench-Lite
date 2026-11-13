@@ -145,6 +145,28 @@ python scripts/results.py failures --all             # categories across all sto
 So far the real Gemini runs had no failures (the suite is too easy for that model), so the categories
 are verified on scripted test fixtures; harder tasks are planned.
 
+## The calculator (version 2)
+
+The agent's calculator never uses `eval()`: it walks the parsed expression and allows only arithmetic
+(`+ - * / // % **`) and exactly four functions, `round(x, digits)`, `abs(x)`, `min(...)`, `max(...)`,
+called plainly (no attributes, keyword arguments or `*` unpacking; min/max take at most 20 arguments,
+round digits must be −10…10). `round()` rounds **half away from zero** (2.5 → 3, −2.5 → −3,
+2.675 → 2.68) with `Decimal`; a float is converted through its shortest printed form, so binary
+artefacts don't change the result. This is deliberately NOT Python's built-in `round()`, which
+gives `round(2.5) == 2` and `round(2.675, 2) == 2.67`.
+
+Why version 2: real Gemini runs kept trying `round()` on shop-010, wasting a step on the error and
+using 7–8 of 8 allowed steps. Measure the change (stored runs only, no API calls):
+
+```powershell
+python scripts/results.py history shop-010     # TOOLS column: fingerprint, or "unknown" for old runs
+python scripts/results.py measure shop-010     # exploratory before/after, grouped by agent and tools
+```
+
+`measure` reports small samples as **exploratory evidence, not proof**, never mixes a scripted agent
+with a real model, and keeps infrastructure errors out of correctness. Known limitation: very small
+results print in scientific notation (`2e-10`), as they have since version 1.
+
 ## Benchmark metrics
 
 | Metric | Meaning |

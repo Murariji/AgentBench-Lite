@@ -97,13 +97,13 @@ def test_tools_fingerprint_covers_versions_and_ignores_order():
 #   * behaviour changed -> raise that tool's `version`, then update the pins below;
 #   * only the wording/schema changed -> update the contract pin (runs will show "contract changed").
 
-PINNED_CONTRACTS = {             # contract fingerprints of the shop tools, version 1 (Step A.1)
-    "calculator": "b6ed49cab787",
+PINNED_CONTRACTS = {             # contract fingerprints of the shop tools (calculator v2 since Step A.3)
+    "calculator": "fbd30a600ed5",    # v1 was b6ed49cab787 (description before round/abs/min/max)
     "describe_table": "95015d83cc59",
     "list_tables": "d438d6e99a62",
     "sql_query": "caad37852689",
 }
-PINNED_SHOP_TOOLS = "2191990ea327"
+PINNED_SHOP_TOOLS = "c1af5a87019e"   # with calculator v1: 2191990ea327
 
 
 def test_tripwire_contract_fingerprints(shop):
@@ -112,23 +112,28 @@ def test_tripwire_contract_fingerprints(shop):
     assert tools_fingerprint(specs) == PINNED_SHOP_TOOLS
 
 
-# Representative behaviours of calculator VERSION 1. These cover only the cases listed here: they
-# cannot detect every possible change in meaning. Step A.3 will change some of them on purpose -
-# and must raise the calculator to version 2 when it does.
-CALCULATOR_V1 = [
-    ("2416098 / 150", "16107.32", None),
-    ("(26 - 21) / 21 * 100", "23.809523809523807", None),
-    ("round(16107.32)", None, "unsupported syntax: Call"),
-    ("abs(-3)", None, "unsupported syntax: Call"),
-    ("2 ** 101", None, "exponent too large (max 100)"),
-    ("1 / 0", None, "division by zero"),
-    ('__import__("os")', None, "unsupported syntax: Call"),
+# Representative behaviours of calculator VERSION 2. These cover only the cases listed here: they
+# cannot detect every possible change in meaning. Any behaviour change must raise the version and
+# replace these pins. (Version 1 history, Step A.1: round(16107.32), abs(-3) and __import__("os") all gave
+# "unsupported syntax: Call"; the arithmetic rows below were identical in v1.)
+CALCULATOR_V2 = [
+    ("2416098 / 150", "16107.32", None),                    # plain arithmetic: unchanged since v1
+    ("(26 - 21) / 21 * 100", "23.809523809523807", None),   # unchanged since v1
+    ("2 ** 101", None, "exponent too large (max 100)"),     # unchanged since v1
+    ("1 / 0", None, "division by zero"),                    # unchanged since v1
+    ("round(16107.32)", "16107", None),                     # v1: unsupported syntax: Call
+    ("round(23.809523809523807, 1)", "23.8", None),
+    ("round(2.5)", "3", None),                              # half away from zero, NOT Python's 2
+    ("abs(-3)", "3", None),
+    ("max(21, 26) - min(21, 26)", "5", None),
+    ('__import__("os")', None, "function '__import__' is not allowed; allowed: abs, max, min, round"),
+    ("math.floor(2.5)", None, "only these functions can be called: abs, max, min, round"),
 ]
 
 
-@pytest.mark.parametrize("expression, output, error", CALCULATOR_V1)
-def test_tripwire_calculator_v1_behaviour(expression, output, error):
-    assert CalculatorTool.version == 1, "calculator version changed: replace these v1 pins with the new version's"
+@pytest.mark.parametrize("expression, output, error", CALCULATOR_V2)
+def test_tripwire_calculator_v2_behaviour(expression, output, error):
+    assert CalculatorTool.version == 2, "calculator version changed: replace these v2 pins with the new version's"
     call = ToolRegistry([CalculatorTool()]).execute("calculator", {"expression": expression})
     assert (call.output, call.error) == (output, error)
 
@@ -151,7 +156,7 @@ def test_old_json_without_tools_loads_as_unknown(careful):
 
 
 def test_report_shows_tools_or_not_recorded(careful):
-    assert "Tools      : calculator v1, describe_table v1, list_tables v1, sql_query v1" in format_report(careful)
+    assert "Tools      : calculator v2, describe_table v1, list_tables v1, sql_query v1" in format_report(careful)
     old = careful.model_copy(update={"tools": None})
     assert "Tools      : not recorded (run stored before tool versions existed)" in format_report(old)
 
@@ -165,22 +170,22 @@ def test_same_tools_add_nothing(careful, shop):
 
 
 def test_changed_tool_version_is_the_changed_dimension(careful):
-    v2 = [s.model_copy(update={"version": 2}) if s.name == "calculator" else s for s in careful.tools]
+    v2 = [s.model_copy(update={"version": s.version + 1}) if s.name == "calculator" else s for s in careful.tools]
     text = compare([careful, with_tools(careful, v2, "v2")])
     assert "Changed dimension: tools (fingerprint) (the only configuration difference)." in text
-    assert "calculator v1 -> v2" in text
+    assert "calculator v2 -> v3" in text
 
 
 def test_changed_contract_with_the_same_version_is_flagged(careful):
     edited = [s.model_copy(update={"description": s.description + " Now also rounds."}) if s.name == "calculator"
               else s for s in careful.tools]
     text = compare([careful, with_tools(careful, edited, "edited")])
-    assert "calculator contract changed (description/parameters) with the SAME version v1" in text
+    assert "calculator contract changed (description/parameters) with the SAME version v2" in text
 
 
 def test_tools_and_model_changed_is_a_multi_change_warning(careful, shop):
     sloppy = run(shop, "sloppy")
-    v2 = [s.model_copy(update={"version": 2}) if s.name == "calculator" else s for s in sloppy.tools]
+    v2 = [s.model_copy(update={"version": s.version + 1}) if s.name == "calculator" else s for s in sloppy.tools]
     text = compare([careful, with_tools(sloppy, v2, "both")])
     assert "WARNING: several dimensions changed (model, tools (fingerprint))" in text
 
@@ -206,12 +211,12 @@ def test_tools_round_trip_and_are_stored_once(careful, shop, tmp_path):
     with ResultStore(path) as store:
         assert store.load(store.save(careful)).tools == careful.tools
         store.save(run(shop))                                                   # same tools again
-        v2 = [s.model_copy(update={"version": 2}) if s.name == "calculator" else s for s in careful.tools]
+        v2 = [s.model_copy(update={"version": s.version + 1}) if s.name == "calculator" else s for s in careful.tools]
         other = run(shop)
         store.save(with_tools(other, v2, "v2-suite"))
         assert store.load("v2-suite").tools == v2
     with sqlite3.connect(path) as conn:
-        assert conn.execute("SELECT COUNT(*) FROM tool_versions").fetchone()[0] == 5   # 4 shared + calculator v2
+        assert conn.execute("SELECT COUNT(*) FROM tool_versions").fetchone()[0] == 5   # 4 shared + the calculator's next version
 
 
 def test_not_recorded_and_empty_stay_different(careful, tmp_path):

@@ -199,7 +199,8 @@ def test_retries_are_a_warning_not_a_failure(shop):
 
 
 def test_ignored_tool_error_in_a_passed_run(shop):
-    a, record = zoo(shop, "shop-001", [sql(COUNT), tool("calculator", expression="round(30.2)"), answer("30")])
+    # sqrt() is not one of the calculator's allowed functions (round() is, since calculator v2)
+    a, record = zoo(shop, "shop-001", [sql(COUNT), tool("calculator", expression="sqrt(900)"), answer("30")])
     assert record.outcome == "passed" and names(a.warnings) == {"unfixed_tool_errors"}
 
 

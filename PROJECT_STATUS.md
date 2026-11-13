@@ -15,6 +15,33 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Benchmark v2 — Step A.3 Calculator v2 (code + tests): ✅ complete** (tests: **484 passed** when run by
+Claude; 73 new — user to confirm). The REAL measurement (shop-010 × 3, budget 30) has NOT been run: it
+waits for the user's explicit approval and is started by the user.
+- Calculator **version 2**: exactly `round`, `abs`, `min`, `max`, called plainly (no attributes, keyword
+  arguments or `*` unpacking; anything else → "function 'x' is not allowed; allowed: abs, max, min,
+  round"). Call shape and argument counts checked BEFORE any argument is calculated. Limits: min/max
+  1–20 arguments, round digits −10…10 (whole numbers only), exponent limit, division by zero kept.
+- Rounding: half away from zero via `Decimal` + `ROUND_HALF_UP` (2.5 → 3, −2.5 → −3, 2.675 → 2.68,
+  1.005 → 1.01, 1234 at −1 → 1230). Conversion rule: int exactly; float through its SHORTEST printed
+  form (`repr`), never its exact binary value. Plain arithmetic unchanged from v1 (still floats).
+- Description now mentions the functions and the rounding rule → contract fingerprint changed too
+  (calculator b6ed49cab787 → fbd30a600ed5; shop tools 2191990ea327 → c1af5a87019e). SQL tool pins unchanged.
+- Tripwires did their job: 1 contract pin + 7 v1 behaviour pins failed; replaced by 11 v2 pins (v1 kept
+  as history in comments and notes). 7 tests that assumed "calculator = v1" made version-relative;
+  one analysis test used `round(30.2)` as a failing call → now `sqrt(900)`.
+- `run_benchmark.py --tasks ID [ID ...]` (validated: unknown or duplicate ids refused; suite order kept).
+  `results.py history` gains a TOOLS column (fingerprint or "unknown") + a legend per fingerprint.
+  New `results.py measure TASK` (`agentbench/measurement.py`): groups by (provider, model, tools) —
+  correctness, avg LLM calls/steps, round() errors, tool errors, near step limit, step-limit failures;
+  infra errors and skips counted apart; always prints its limitations.
+- Found and fixed during the trial: `measure` first grouped by tools only, which put a SCRIPTED agent's
+  column next to real Gemini runs (a fake "improvement"). Now grouped by agent too; a mutation check
+  (grouping by tools only) makes 2 tests fail.
+- Known limitation (unchanged since v1): very small results print in scientific notation (`2e-10`).
+- Measurement estimate: the tool's generic estimate says ~15 (5/run); shop-010 history suggests 7–9
+  per run (~21–27). The hard cap of 30 is never exceeded; a cut repeat is reported as stopped by budget.
+
 **Benchmark v2 — Step A.1 Tool versions in the fingerprint: ✅ complete** (tests: **411 passed** when run
 by Claude; 36 new — user to confirm). Next: A.3 (calculator fix + measurement), waiting for approval.
 Order agreed with the user: A.1 → A.3 → A.2 → A.4 (few real runs, gradually) → Phase 9 → Phase 10.
@@ -404,6 +431,7 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Benchmark v2, Step A.3 — calculator accepts a small safe set of functions (version 2, new pins), then measure the effect on shop-010 (steps, tool errors) with the fairness check showing "tools v1 -> v2". Plan first; waiting for user approval.
+Step A.3 measurement — ONLY after the user's explicit approval, started by the user:
+`python scripts/run_benchmark.py --agent gemini --tasks shop-010 --repeats 3 --budget 30 --yes --save`, then `python scripts/results.py measure shop-010`. Then A.2 (harder suite) — plan first.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

@@ -8,6 +8,7 @@
     python scripts/results.py import results/<file>.json [more files...]
     python scripts/results.py failures <id>             # why runs failed, with evidence + near misses
     python scripts/results.py failures --all [--real]   # failure categories across every stored run
+    python scripts/results.py measure shop-010          # exploratory before/after, grouped by tools version
 
 <id> can be the first few characters of a suite id (like a short git commit id).
 """
@@ -18,6 +19,7 @@ import sys
 from collections import Counter
 
 from agentbench.analysis import analyze_suite
+from agentbench.measurement import format_measurement, measure_task
 from agentbench.report import compare, format_failures, format_report, load_json
 from agentbench.storage import (DEFAULT_RESULTS_DB, DuplicateSuiteError, ResultStore, StorageError)
 
@@ -51,14 +53,24 @@ def cmd_history(store: ResultStore, args) -> None:
         print(f"No stored runs of {args.task_id!r}.")
         return
     print(f"History of {args.task_id} (newest first), {len(rows)} scheduled run(s)")
-    print(f"{'SUITE':8}  {'STARTED (UTC)':16}  {'CONFIG':16}  {'MODEL':22}  {'TASK VER':8}  "
+    print(f"{'SUITE':8}  {'STARTED (UTC)':16}  {'CONFIG':16}  {'MODEL':22}  {'TASK VER':8}  {'TOOLS':8}  "
           f"{'REP':>3}  {'OUTCOME':11}  {'CALLS':>5}  ANSWER / REASON")
     for h in rows:
         detail = h.reason if h.outcome == "skipped" else (
             f"({h.error_kind})" if h.outcome == "infra_error" else repr(h.final_answer))
         calls = "-" if h.llm_calls is None else str(h.llm_calls)
+        tools = (h.tools_fingerprint or "unknown")[:8]   # unknown = not recorded, never assumed
         print(f"{h.suite_id[:8]:8}  {h.started_at:%Y-%m-%d %H:%M}  {h.config_name[:16]:16}  {h.model[:22]:22}  "
-              f"{(h.task_hash or '-')[:8]:8}  {h.repeat + 1:>3}  {h.outcome.upper():11}  {calls:>5}  {detail}")
+              f"{(h.task_hash or '-')[:8]:8}  {tools:8}  {h.repeat + 1:>3}  {h.outcome.upper():11}  {calls:>5}  "
+              f"{detail}")
+    for fingerprint in dict.fromkeys(h.tools_fingerprint for h in rows if h.tools_fingerprint):
+        specs = next(h.tools for h in rows if h.tools_fingerprint == fingerprint)
+        print(f"  tools {fingerprint[:8]} = " + ", ".join(f"{t.name} v{t.version}" for t in specs))
+
+
+def cmd_measure(store: ResultStore, args) -> None:
+    """Exploratory before/after of one task, grouped by tools version. Stored runs only."""
+    print(format_measurement(args.task_id, measure_task(store, args.task_id)))
 
 
 def cmd_failures(store: ResultStore, args) -> None:
@@ -128,6 +140,9 @@ if __name__ == "__main__":
     p = sub.add_parser("history", help="one task across every run")
     p.add_argument("task_id")
     p.set_defaults(handler=cmd_history)
+    p = sub.add_parser("measure", help="exploratory before/after of one task, grouped by tools version")
+    p.add_argument("task_id")
+    p.set_defaults(handler=cmd_measure)
     p = sub.add_parser("failures", help="failure analysis of one run, or of all runs")
     p.add_argument("id", nargs="?")
     p.add_argument("--all", action="store_true", help="across every stored run")
