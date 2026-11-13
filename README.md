@@ -23,7 +23,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **Benchmarks** | Run task suites, compute metrics, compare agent configurations, free-tier safety | ✅ Implemented |
 | **Storage** | SQLite history of every run, trace and check; queries and a results CLI | ✅ Implemented |
 | **API** | FastAPI REST backend over the framework and storage | ✅ Implemented (local) |
-| **Dashboard** | React + TypeScript UI for runs, traces and charts | 🗓️ Planned |
+| **Dashboard** | React + TypeScript UI for runs, traces and charts | 🔶 In progress (setup + API connection) |
 
 ## Implemented so far
 
@@ -262,6 +262,16 @@ Full reference: **[docs/api.md](docs/api.md)** — endpoints, error codes, job s
 CORS (only the React dev origins `http://localhost:5173` / `http://127.0.0.1:5173`, never `*`), the 64 KB
 request limit, and the pinned API contract that the dashboard relies on.
 
+## Dashboard (in progress)
+
+```powershell
+python scripts/serve_api.py          # terminal 1: the API
+cd dashboard; npm install; npm run dev   # terminal 2: open http://localhost:5173
+```
+
+React + TypeScript + Tailwind, with types generated from the API's pinned contract. It only displays and
+requests; all logic stays in the backend. See [dashboard/README.md](dashboard/README.md).
+
 ## Tech stack
 
 - Python 3.11+
@@ -271,7 +281,8 @@ request limit, and the pinned API contract that the dashboard relies on.
 - Google Gemini API, free tier (`google-genai`), `python-dotenv` — optional extra
 - SQLite (built-in `sqlite3`) for stored results, `data/results.db`
 - FastAPI + Uvicorn (optional `api` extra) for the local read-only API; httpx for its tests
-- Planned: React + TypeScript + Tailwind CSS + Recharts, Docker
+- React 18 + TypeScript 5 + Vite 5 + Tailwind CSS 3 (dashboard), Vitest + Testing Library
+- Planned: Recharts (charts), React Router (pages), Docker
 
 ## Getting started
 

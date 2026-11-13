@@ -1,0 +1,4 @@
+/* Tailwind: base styles, component classes and utility classes (only the ones used are generated). */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

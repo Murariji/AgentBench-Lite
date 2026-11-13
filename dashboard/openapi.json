@@ -1,0 +1,3520 @@
+{
+ "components": {
+  "schemas": {
+   "AgentConfig": {
+    "additionalProperties": false,
+    "description": "One agent setup, described as data, so runs can be compared and reproduced.",
+    "properties": {
+     "max_attempts": {
+      "default": 3,
+      "minimum": 1.0,
+      "title": "Max Attempts",
+      "type": "integer"
+     },
+     "min_interval_seconds": {
+      "default": 0.0,
+      "minimum": 0.0,
+      "title": "Min Interval Seconds",
+      "type": "number"
+     },
+     "model": {
+      "minLength": 1,
+      "title": "Model",
+      "type": "string"
+     },
+     "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "prompt_hash": {
+      "default": "",
+      "title": "Prompt Hash",
+      "type": "string"
+     },
+     "provider": {
+      "enum": [
+       "fake",
+       "gemini"
+      ],
+      "title": "Provider",
+      "type": "string"
+     },
+     "system_prompt": {
+      "title": "System Prompt",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "provider",
+     "model",
+     "system_prompt"
+    ],
+    "title": "AgentConfig",
+    "type": "object"
+   },
+   "Check": {
+    "additionalProperties": false,
+    "description": "One line on the marksheet: which rule, did it pass, and why.",
+    "properties": {
+     "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "passed": {
+      "title": "Passed",
+      "type": "boolean"
+     },
+     "reason": {
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "passed",
+     "reason"
+    ],
+    "title": "Check",
+    "type": "object"
+   },
+   "CompareOut": {
+    "properties": {
+     "changed_dimensions": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Changed Dimensions",
+      "type": "array"
+     },
+     "conclusions": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Conclusions",
+      "type": "array"
+     },
+     "dimensions": {
+      "additionalProperties": {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
+      "title": "Dimensions",
+      "type": "object"
+     },
+     "fair": {
+      "title": "Fair",
+      "type": "boolean"
+     },
+     "metrics": {
+      "items": {
+       "$ref": "#/components/schemas/SuiteMetrics"
+      },
+      "title": "Metrics",
+      "type": "array"
+     },
+     "suite_ids": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Suite Ids",
+      "type": "array"
+     },
+     "tasks": {
+      "items": {
+       "$ref": "#/components/schemas/TaskOutcomesOut"
+      },
+      "title": "Tasks",
+      "type": "array"
+     },
+     "tools_status": {
+      "title": "Tools Status",
+      "type": "string"
+     },
+     "unfair_dimensions": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Unfair Dimensions",
+      "type": "array"
+     }
+    },
+    "required": [
+     "suite_ids",
+     "fair",
+     "unfair_dimensions",
+     "changed_dimensions",
+     "tools_status",
+     "conclusions",
+     "dimensions",
+     "metrics",
+     "tasks"
+    ],
+    "title": "CompareOut",
+    "type": "object"
+   },
+   "ErrorBody": {
+    "properties": {
+     "code": {
+      "title": "Code",
+      "type": "string"
+     },
+     "details": {
+      "title": "Details"
+     },
+     "message": {
+      "title": "Message",
+      "type": "string"
+     }
+    },
+    "required": [
+     "code",
+     "message"
+    ],
+    "title": "ErrorBody",
+    "type": "object"
+   },
+   "ErrorResponse": {
+    "properties": {
+     "error": {
+      "$ref": "#/components/schemas/ErrorBody"
+     }
+    },
+    "required": [
+     "error"
+    ],
+    "title": "ErrorResponse",
+    "type": "object"
+   },
+   "EstimateOut": {
+    "properties": {
+     "agent": {
+      "title": "Agent",
+      "type": "string"
+     },
+     "allowed": {
+      "title": "Allowed",
+      "type": "boolean"
+     },
+     "estimate": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Estimate"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "note": {
+      "default": "An estimate never sends anything to any model.",
+      "title": "Note",
+      "type": "string"
+     },
+     "real_runs_enabled": {
+      "title": "Real Runs Enabled",
+      "type": "boolean"
+     },
+     "reasons": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+     },
+     "registration": {
+      "$ref": "#/components/schemas/RegistrationOut"
+     },
+     "runs": {
+      "title": "Runs",
+      "type": "integer"
+     },
+     "suite": {
+      "title": "Suite",
+      "type": "string"
+     },
+     "tasks": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Tasks",
+      "type": "array"
+     }
+    },
+    "required": [
+     "agent",
+     "kind",
+     "suite",
+     "tasks",
+     "runs",
+     "estimate",
+     "registration",
+     "real_runs_enabled",
+     "allowed",
+     "reasons"
+    ],
+    "title": "EstimateOut",
+    "type": "object"
+   },
+   "EvaluationResult": {
+    "additionalProperties": false,
+    "description": "The verdict for one run. Every check is mandatory: passed = all checks passed.",
+    "properties": {
+     "checks": {
+      "items": {
+       "$ref": "#/components/schemas/Check"
+      },
+      "minItems": 1,
+      "title": "Checks",
+      "type": "array"
+     },
+     "passed": {
+      "title": "Passed",
+      "type": "boolean"
+     },
+     "run_id": {
+      "minLength": 1,
+      "title": "Run Id",
+      "type": "string"
+     },
+     "task_id": {
+      "minLength": 1,
+      "title": "Task Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "task_id",
+     "passed",
+     "checks"
+    ],
+    "title": "EvaluationResult",
+    "type": "object"
+   },
+   "FailuresOut": {
+    "properties": {
+     "analysis": {
+      "$ref": "#/components/schemas/SuiteAnalysis"
+     },
+     "note": {
+      "title": "Note",
+      "type": "string"
+     }
+    },
+    "required": [
+     "note",
+     "analysis"
+    ],
+    "title": "FailuresOut",
+    "type": "object"
+   },
+   "HealthOut": {
+    "properties": {
+     "real_runs_enabled": {
+      "title": "Real Runs Enabled",
+      "type": "boolean"
+     },
+     "schema_version": {
+      "title": "Schema Version",
+      "type": "integer"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "schema_version",
+     "real_runs_enabled"
+    ],
+    "title": "HealthOut",
+    "type": "object"
+   },
+   "HistoryPage": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/TaskHistoryEntry"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "pagination": {
+      "$ref": "#/components/schemas/Pagination"
+     },
+     "task_id": {
+      "title": "Task Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "task_id",
+     "items",
+     "pagination"
+    ],
+    "title": "HistoryPage",
+    "type": "object"
+   },
+   "IndexOut": {
+    "properties": {
+     "docs": {
+      "title": "Docs",
+      "type": "string"
+     },
+     "health": {
+      "title": "Health",
+      "type": "string"
+     },
+     "local_only": {
+      "title": "Local Only",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "real_runs_enabled": {
+      "title": "Real Runs Enabled",
+      "type": "boolean"
+     },
+     "version": {
+      "title": "Version",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "version",
+     "docs",
+     "health",
+     "real_runs_enabled",
+     "local_only"
+    ],
+    "title": "IndexOut",
+    "type": "object"
+   },
+   "JobOut": {
+    "properties": {
+     "agent": {
+      "title": "Agent",
+      "type": "string"
+     },
+     "budget": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Budget"
+     },
+     "completed_tasks": {
+      "title": "Completed Tasks",
+      "type": "integer"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "current_repeat": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Current Repeat"
+     },
+     "current_task": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Current Task"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "job_id": {
+      "title": "Job Id",
+      "type": "string"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "note": {
+      "title": "Note",
+      "type": "string"
+     },
+     "percent": {
+      "title": "Percent",
+      "type": "number"
+     },
+     "progress": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Progress",
+      "type": "array"
+     },
+     "recovery_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recovery Path"
+     },
+     "repeats": {
+      "title": "Repeats",
+      "type": "integer"
+     },
+     "save_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Save Error"
+     },
+     "saved": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Saved"
+     },
+     "started_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Started At"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "suite": {
+      "title": "Suite",
+      "type": "string"
+     },
+     "suite_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Suite Id"
+     },
+     "summary": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Summary"
+     },
+     "tasks": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Tasks",
+      "type": "array"
+     },
+     "total_tasks": {
+      "title": "Total Tasks",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "job_id",
+     "status",
+     "agent",
+     "kind",
+     "suite",
+     "tasks",
+     "repeats",
+     "budget",
+     "created_at",
+     "started_at",
+     "finished_at",
+     "completed_tasks",
+     "total_tasks",
+     "percent",
+     "current_task",
+     "current_repeat",
+     "progress",
+     "suite_id",
+     "saved",
+     "save_error",
+     "recovery_path",
+     "error",
+     "summary",
+     "note"
+    ],
+    "title": "JobOut",
+    "type": "object"
+   },
+   "JobPage": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/JobOut"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "pagination": {
+      "$ref": "#/components/schemas/Pagination"
+     }
+    },
+    "required": [
+     "items",
+     "pagination"
+    ],
+    "title": "JobPage",
+    "type": "object"
+   },
+   "MeasureGroupOut": {
+    "properties": {
+     "avg_llm_calls": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Llm Calls"
+     },
+     "avg_steps": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Steps"
+     },
+     "calculator": {
+      "title": "Calculator",
+      "type": "string"
+     },
+     "evaluated": {
+      "title": "Evaluated",
+      "type": "integer"
+     },
+     "infra_errors": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Infra Errors",
+      "type": "array"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "model": {
+      "title": "Model",
+      "type": "string"
+     },
+     "near_step_limit": {
+      "title": "Near Step Limit",
+      "type": "integer"
+     },
+     "passed": {
+      "title": "Passed",
+      "type": "integer"
+     },
+     "provider": {
+      "title": "Provider",
+      "type": "string"
+     },
+     "round_errors": {
+      "title": "Round Errors",
+      "type": "integer"
+     },
+     "runs_with_round_errors": {
+      "title": "Runs With Round Errors",
+      "type": "integer"
+     },
+     "scheduled": {
+      "title": "Scheduled",
+      "type": "integer"
+     },
+     "skipped": {
+      "title": "Skipped",
+      "type": "integer"
+     },
+     "step_limit_failures": {
+      "title": "Step Limit Failures",
+      "type": "integer"
+     },
+     "suites": {
+      "title": "Suites",
+      "type": "integer"
+     },
+     "tool_errors": {
+      "title": "Tool Errors",
+      "type": "integer"
+     },
+     "tools": {
+      "title": "Tools",
+      "type": "string"
+     }
+    },
+    "required": [
+     "provider",
+     "model",
+     "kind",
+     "tools",
+     "calculator",
+     "suites",
+     "scheduled",
+     "passed",
+     "evaluated",
+     "infra_errors",
+     "skipped",
+     "avg_llm_calls",
+     "avg_steps",
+     "runs_with_round_errors",
+     "round_errors",
+     "tool_errors",
+     "near_step_limit",
+     "step_limit_failures"
+    ],
+    "title": "MeasureGroupOut",
+    "type": "object"
+   },
+   "MeasureOut": {
+    "properties": {
+     "groups": {
+      "items": {
+       "$ref": "#/components/schemas/MeasureGroupOut"
+      },
+      "title": "Groups",
+      "type": "array"
+     },
+     "limitations": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+     },
+     "task_id": {
+      "title": "Task Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "task_id",
+     "groups",
+     "limitations"
+    ],
+    "title": "MeasureOut",
+    "type": "object"
+   },
+   "Pagination": {
+    "properties": {
+     "limit": {
+      "title": "Limit",
+      "type": "integer"
+     },
+     "next_offset": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next Offset"
+     },
+     "offset": {
+      "title": "Offset",
+      "type": "integer"
+     },
+     "returned": {
+      "title": "Returned",
+      "type": "integer"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "limit",
+     "offset",
+     "total",
+     "returned",
+     "next_offset"
+    ],
+    "title": "Pagination",
+    "type": "object"
+   },
+   "Rate": {
+    "properties": {
+     "eligible": {
+      "title": "Eligible",
+      "type": "integer"
+     },
+     "passed": {
+      "title": "Passed",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "passed",
+     "eligible"
+    ],
+    "title": "Rate",
+    "type": "object"
+   },
+   "RateOut": {
+    "properties": {
+     "eligible": {
+      "title": "Eligible",
+      "type": "integer"
+     },
+     "passed": {
+      "title": "Passed",
+      "type": "integer"
+     },
+     "rate": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rate"
+     },
+     "text": {
+      "title": "Text",
+      "type": "string"
+     }
+    },
+    "required": [
+     "passed",
+     "eligible",
+     "rate",
+     "text"
+    ],
+    "title": "RateOut",
+    "type": "object"
+   },
+   "RegisteredSuiteOut": {
+    "properties": {
+     "dataset": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dataset"
+     },
+     "git_head": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Git Head"
+     },
+     "registered_at": {
+      "title": "Registered At",
+      "type": "string"
+     },
+     "suite": {
+      "title": "Suite",
+      "type": "string"
+     },
+     "suite_fingerprint": {
+      "title": "Suite Fingerprint",
+      "type": "string"
+     },
+     "tasks": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Tasks",
+      "type": "array"
+     },
+     "tasks_fingerprint": {
+      "title": "Tasks Fingerprint",
+      "type": "string"
+     },
+     "tools": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Tools",
+      "type": "object"
+     },
+     "tools_fingerprint": {
+      "title": "Tools Fingerprint",
+      "type": "string"
+     },
+     "version": {
+      "title": "Version",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "suite",
+     "version",
+     "registered_at",
+     "git_head",
+     "suite_fingerprint",
+     "tasks_fingerprint",
+     "tools_fingerprint",
+     "tools",
+     "dataset",
+     "tasks"
+    ],
+    "title": "RegisteredSuiteOut",
+    "type": "object"
+   },
+   "RegistrationOut": {
+    "properties": {
+     "line": {
+      "title": "Line",
+      "type": "string"
+     },
+     "notes": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
+     },
+     "problems": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Problems",
+      "type": "array"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "suite_fingerprint": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Suite Fingerprint"
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
+     }
+    },
+    "required": [
+     "status",
+     "line",
+     "problems",
+     "notes"
+    ],
+    "title": "RegistrationOut",
+    "type": "object"
+   },
+   "RetryEvent": {
+    "additionalProperties": false,
+    "description": "One FAILED LLM request that was retried: what failed, how long we waited, how it ended.",
+    "properties": {
+     "attempt": {
+      "minimum": 1.0,
+      "title": "Attempt",
+      "type": "integer"
+     },
+     "error_kind": {
+      "minLength": 1,
+      "title": "Error Kind",
+      "type": "string"
+     },
+     "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+     },
+     "request_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Request Id"
+     },
+     "status_code": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Status Code"
+     },
+     "step_index": {
+      "minimum": 0.0,
+      "title": "Step Index",
+      "type": "integer"
+     },
+     "succeeded": {
+      "title": "Succeeded",
+      "type": "boolean"
+     },
+     "waited_seconds": {
+      "minimum": 0.0,
+      "title": "Waited Seconds",
+      "type": "number"
+     }
+    },
+    "required": [
+     "step_index",
+     "attempt",
+     "error_kind",
+     "waited_seconds",
+     "succeeded"
+    ],
+    "title": "RetryEvent",
+    "type": "object"
+   },
+   "RunAnalysis": {
+    "properties": {
+     "category": {
+      "anyOf": [
+       {
+        "enum": [
+         "invalid_response",
+         "no_data_used",
+         "tool_misuse",
+         "loop",
+         "unrecovered_tool_error",
+         "step_limit",
+         "misread_result",
+         "wrong_result",
+         "unparseable_answer",
+         "unclassified"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Category"
+     },
+     "infra_error_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Infra Error Kind"
+     },
+     "outcome": {
+      "title": "Outcome",
+      "type": "string"
+     },
+     "repeat": {
+      "title": "Repeat",
+      "type": "integer"
+     },
+     "retries_recorded": {
+      "title": "Retries Recorded",
+      "type": "boolean"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "signals": {
+      "items": {
+       "$ref": "#/components/schemas/Signal"
+      },
+      "title": "Signals",
+      "type": "array"
+     },
+     "task_id": {
+      "title": "Task Id",
+      "type": "string"
+     },
+     "warnings": {
+      "items": {
+       "$ref": "#/components/schemas/Signal"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "run_id",
+     "task_id",
+     "repeat",
+     "outcome",
+     "retries_recorded"
+    ],
+    "title": "RunAnalysis",
+    "type": "object"
+   },
+   "RunDetailOut": {
+    "properties": {
+     "analysis": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/RunAnalysis"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "record": {
+      "$ref": "#/components/schemas/RunRecord"
+     },
+     "suite_id": {
+      "title": "Suite Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "suite_id",
+     "record",
+     "analysis"
+    ],
+    "title": "RunDetailOut",
+    "type": "object"
+   },
+   "RunIn": {
+    "additionalProperties": false,
+    "description": "A request to estimate or start a run. Unknown fields are rejected (422).",
+    "properties": {
+     "agent": {
+      "enum": [
+       "careful",
+       "sloppy",
+       "gemini"
+      ],
+      "title": "Agent",
+      "type": "string"
+     },
+     "budget": {
+      "anyOf": [
+       {
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Budget"
+     },
+     "confirm": {
+      "default": false,
+      "title": "Confirm",
+      "type": "boolean"
+     },
+     "repeats": {
+      "default": 1,
+      "maximum": 10.0,
+      "minimum": 1.0,
+      "title": "Repeats",
+      "type": "integer"
+     },
+     "suite": {
+      "default": "shop",
+      "title": "Suite",
+      "type": "string"
+     },
+     "tasks": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 20,
+        "minItems": 1,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tasks"
+     }
+    },
+    "required": [
+     "agent"
+    ],
+    "title": "RunIn",
+    "type": "object"
+   },
+   "RunRecord": {
+    "additionalProperties": false,
+    "description": "One scheduled run of one task: what happened (run) and the verdict (evaluation).",
+    "properties": {
+     "difficulty": {
+      "anyOf": [
+       {
+        "enum": [
+         "easy",
+         "medium",
+         "hard"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Difficulty"
+     },
+     "evaluation": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/EvaluationResult"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "outcome": {
+      "enum": [
+       "passed",
+       "failed",
+       "infra_error"
+      ],
+      "title": "Outcome",
+      "type": "string"
+     },
+     "repeat": {
+      "minimum": 0.0,
+      "title": "Repeat",
+      "type": "integer"
+     },
+     "run": {
+      "$ref": "#/components/schemas/RunResult"
+     },
+     "task_id": {
+      "minLength": 1,
+      "title": "Task Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "task_id",
+     "repeat",
+     "run",
+     "outcome"
+    ],
+    "title": "RunRecord",
+    "type": "object"
+   },
+   "RunResult": {
+    "additionalProperties": false,
+    "description": "Outcome of running one Task: how it ended, the answer, and the full trace.",
+    "properties": {
+     "duration_seconds": {
+      "minimum": 0.0,
+      "title": "Duration Seconds",
+      "type": "number"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "error_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error Kind"
+     },
+     "final_answer": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Final Answer"
+     },
+     "llm_calls": {
+      "default": 0,
+      "minimum": 0.0,
+      "title": "Llm Calls",
+      "type": "integer"
+     },
+     "retries": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/RetryEvent"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Retries"
+     },
+     "run_id": {
+      "minLength": 1,
+      "title": "Run Id",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "completed",
+       "max_steps",
+       "error"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "task_id": {
+      "minLength": 1,
+      "title": "Task Id",
+      "type": "string"
+     },
+     "trace": {
+      "$ref": "#/components/schemas/Trace"
+     }
+    },
+    "required": [
+     "task_id",
+     "status",
+     "trace",
+     "duration_seconds"
+    ],
+    "title": "RunResult",
+    "type": "object"
+   },
+   "RunSummaryOut": {
+    "description": "One run inside a suite, without its trace (fetch /suites/{id}/runs/{run_id} for that).",
+    "properties": {
+     "difficulty": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Difficulty"
+     },
+     "duration_seconds": {
+      "title": "Duration Seconds",
+      "type": "number"
+     },
+     "error_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error Kind"
+     },
+     "failed_checks": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Failed Checks",
+      "type": "array"
+     },
+     "final_answer": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Final Answer"
+     },
+     "llm_calls": {
+      "title": "Llm Calls",
+      "type": "integer"
+     },
+     "outcome": {
+      "title": "Outcome",
+      "type": "string"
+     },
+     "repeat": {
+      "title": "Repeat",
+      "type": "integer"
+     },
+     "retries": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Retries"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "steps": {
+      "title": "Steps",
+      "type": "integer"
+     },
+     "task_id": {
+      "title": "Task Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "task_id",
+     "repeat",
+     "difficulty",
+     "outcome",
+     "status",
+     "final_answer",
+     "steps",
+     "llm_calls",
+     "retries",
+     "duration_seconds",
+     "error_kind",
+     "failed_checks"
+    ],
+    "title": "RunSummaryOut",
+    "type": "object"
+   },
+   "Signal": {
+    "description": "One observation, with the evidence that supports it.",
+    "properties": {
+     "evidence": {
+      "title": "Evidence",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "step_indexes": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "Step Indexes",
+      "type": "array"
+     },
+     "tool_names": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Tool Names",
+      "type": "array"
+     }
+    },
+    "required": [
+     "name",
+     "evidence"
+    ],
+    "title": "Signal",
+    "type": "object"
+   },
+   "SkippedRun": {
+    "additionalProperties": false,
+    "description": "A scheduled run that never happened (e.g. the suite was stopped).",
+    "properties": {
+     "reason": {
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+     },
+     "repeat": {
+      "minimum": 0.0,
+      "title": "Repeat",
+      "type": "integer"
+     },
+     "task_id": {
+      "minLength": 1,
+      "title": "Task Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "task_id",
+     "repeat",
+     "reason"
+    ],
+    "title": "SkippedRun",
+    "type": "object"
+   },
+   "Step": {
+    "additionalProperties": false,
+    "description": "One turn of the agent loop.",
+    "properties": {
+     "index": {
+      "description": "Position in the trace: 0, 1, 2, ...",
+      "minimum": 0.0,
+      "title": "Index",
+      "type": "integer"
+     },
+     "input_tokens": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Input Tokens"
+     },
+     "llm_output": {
+      "description": "What the model said/decided on this turn.",
+      "title": "Llm Output",
+      "type": "string"
+     },
+     "output_tokens": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Output Tokens"
+     },
+     "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+     },
+     "tool_call": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ToolCall"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "index",
+     "llm_output"
+    ],
+    "title": "Step",
+    "type": "object"
+   },
+   "SuiteAnalysis": {
+    "properties": {
+     "category_counts": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Category Counts",
+      "type": "object"
+     },
+     "failed_runs": {
+      "title": "Failed Runs",
+      "type": "integer"
+     },
+     "infra_errors": {
+      "title": "Infra Errors",
+      "type": "integer"
+     },
+     "passed_runs": {
+      "title": "Passed Runs",
+      "type": "integer"
+     },
+     "retries_not_recorded": {
+      "title": "Retries Not Recorded",
+      "type": "integer"
+     },
+     "runs": {
+      "items": {
+       "$ref": "#/components/schemas/RunAnalysis"
+      },
+      "title": "Runs",
+      "type": "array"
+     },
+     "skipped_runs": {
+      "title": "Skipped Runs",
+      "type": "integer"
+     },
+     "suite_id": {
+      "title": "Suite Id",
+      "type": "string"
+     },
+     "warning_counts": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Warning Counts",
+      "type": "object"
+     }
+    },
+    "required": [
+     "suite_id",
+     "runs",
+     "category_counts",
+     "warning_counts",
+     "failed_runs",
+     "passed_runs",
+     "infra_errors",
+     "skipped_runs",
+     "retries_not_recorded"
+    ],
+    "title": "SuiteAnalysis",
+    "type": "object"
+   },
+   "SuiteDetailOut": {
+    "properties": {
+     "complete": {
+      "title": "Complete",
+      "type": "boolean"
+     },
+     "config": {
+      "$ref": "#/components/schemas/AgentConfig"
+     },
+     "config_fingerprint": {
+      "title": "Config Fingerprint",
+      "type": "string"
+     },
+     "dataset": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dataset"
+     },
+     "estimated_requests": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Estimated Requests"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "metrics": {
+      "$ref": "#/components/schemas/SuiteMetrics"
+     },
+     "registration": {
+      "$ref": "#/components/schemas/RegistrationOut"
+     },
+     "repeats": {
+      "title": "Repeats",
+      "type": "integer"
+     },
+     "request_budget": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Request Budget"
+     },
+     "runs": {
+      "items": {
+       "$ref": "#/components/schemas/RunSummaryOut"
+      },
+      "title": "Runs",
+      "type": "array"
+     },
+     "skipped": {
+      "items": {
+       "$ref": "#/components/schemas/SkippedRun"
+      },
+      "title": "Skipped",
+      "type": "array"
+     },
+     "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+     },
+     "stop_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop Reason"
+     },
+     "suite_id": {
+      "title": "Suite Id",
+      "type": "string"
+     },
+     "suite_name": {
+      "title": "Suite Name",
+      "type": "string"
+     },
+     "tasks_fingerprint": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tasks Fingerprint"
+     },
+     "tools": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/ToolSpec"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tools"
+     },
+     "tools_fingerprint": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tools Fingerprint"
+     }
+    },
+    "required": [
+     "suite_id",
+     "suite_name",
+     "kind",
+     "config",
+     "config_fingerprint",
+     "repeats",
+     "started_at",
+     "finished_at",
+     "dataset",
+     "tools",
+     "tools_fingerprint",
+     "tasks_fingerprint",
+     "request_budget",
+     "estimated_requests",
+     "stop_reason",
+     "complete",
+     "metrics",
+     "registration",
+     "runs",
+     "skipped"
+    ],
+    "title": "SuiteDetailOut",
+    "type": "object"
+   },
+   "SuiteMetrics": {
+    "properties": {
+     "avg_duration_seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Duration Seconds"
+     },
+     "avg_input_tokens": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Input Tokens"
+     },
+     "avg_llm_calls": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Llm Calls"
+     },
+     "avg_output_tokens": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Output Tokens"
+     },
+     "avg_steps": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Steps"
+     },
+     "by_difficulty": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/Rate"
+      },
+      "title": "By Difficulty",
+      "type": "object"
+     },
+     "complete": {
+      "title": "Complete",
+      "type": "boolean"
+     },
+     "eligible_runs": {
+      "title": "Eligible Runs",
+      "type": "integer"
+     },
+     "failed_checks": {
+      "items": {
+       "maxItems": 2,
+       "minItems": 2,
+       "prefixItems": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ],
+       "type": "array"
+      },
+      "title": "Failed Checks",
+      "type": "array"
+     },
+     "failed_runs": {
+      "title": "Failed Runs",
+      "type": "integer"
+     },
+     "infra_errors": {
+      "title": "Infra Errors",
+      "type": "integer"
+     },
+     "k": {
+      "title": "K",
+      "type": "integer"
+     },
+     "pass_at_k": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Rate"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "pass_pow_k": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Rate"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "pass_rate": {
+      "$ref": "#/components/schemas/Rate"
+     },
+     "passed_runs": {
+      "title": "Passed Runs",
+      "type": "integer"
+     },
+     "scheduled_runs": {
+      "title": "Scheduled Runs",
+      "type": "integer"
+     },
+     "skipped_runs": {
+      "title": "Skipped Runs",
+      "type": "integer"
+     },
+     "tool_calls": {
+      "title": "Tool Calls",
+      "type": "integer"
+     },
+     "tool_errors": {
+      "title": "Tool Errors",
+      "type": "integer"
+     },
+     "total_duration_seconds": {
+      "title": "Total Duration Seconds",
+      "type": "number"
+     },
+     "total_llm_calls": {
+      "title": "Total Llm Calls",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "scheduled_runs",
+     "eligible_runs",
+     "passed_runs",
+     "failed_runs",
+     "infra_errors",
+     "skipped_runs",
+     "complete",
+     "pass_rate",
+     "by_difficulty",
+     "avg_steps",
+     "avg_llm_calls",
+     "avg_input_tokens",
+     "avg_output_tokens",
+     "avg_duration_seconds",
+     "total_llm_calls",
+     "total_duration_seconds",
+     "tool_calls",
+     "tool_errors",
+     "failed_checks",
+     "k",
+     "pass_at_k",
+     "pass_pow_k"
+    ],
+    "title": "SuiteMetrics",
+    "type": "object"
+   },
+   "SuitePage": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/SuiteSummaryOut"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "pagination": {
+      "$ref": "#/components/schemas/Pagination"
+     }
+    },
+    "required": [
+     "items",
+     "pagination"
+    ],
+    "title": "SuitePage",
+    "type": "object"
+   },
+   "SuiteSummaryOut": {
+    "properties": {
+     "complete": {
+      "title": "Complete",
+      "type": "boolean"
+     },
+     "config_name": {
+      "title": "Config Name",
+      "type": "string"
+     },
+     "failed": {
+      "title": "Failed",
+      "type": "integer"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "infra_errors": {
+      "title": "Infra Errors",
+      "type": "integer"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "model": {
+      "title": "Model",
+      "type": "string"
+     },
+     "pass_rate": {
+      "$ref": "#/components/schemas/RateOut"
+     },
+     "passed": {
+      "title": "Passed",
+      "type": "integer"
+     },
+     "provider": {
+      "title": "Provider",
+      "type": "string"
+     },
+     "repeats": {
+      "title": "Repeats",
+      "type": "integer"
+     },
+     "scheduled_runs": {
+      "title": "Scheduled Runs",
+      "type": "integer"
+     },
+     "short_id": {
+      "title": "Short Id",
+      "type": "string"
+     },
+     "skipped": {
+      "title": "Skipped",
+      "type": "integer"
+     },
+     "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+     },
+     "stop_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop Reason"
+     },
+     "suite_id": {
+      "title": "Suite Id",
+      "type": "string"
+     },
+     "suite_name": {
+      "title": "Suite Name",
+      "type": "string"
+     },
+     "total_llm_calls": {
+      "title": "Total Llm Calls",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "suite_id",
+     "short_id",
+     "suite_name",
+     "kind",
+     "config_name",
+     "provider",
+     "model",
+     "repeats",
+     "started_at",
+     "finished_at",
+     "scheduled_runs",
+     "passed",
+     "failed",
+     "infra_errors",
+     "skipped",
+     "total_llm_calls",
+     "pass_rate",
+     "complete",
+     "stop_reason"
+    ],
+    "title": "SuiteSummaryOut",
+    "type": "object"
+   },
+   "TaskHistoryEntry": {
+    "description": "One scheduled run of one task in one suite: executed (passed/failed/infra) or skipped.",
+    "properties": {
+     "config_name": {
+      "title": "Config Name",
+      "type": "string"
+     },
+     "duration_seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Seconds"
+     },
+     "error_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error Kind"
+     },
+     "final_answer": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Final Answer"
+     },
+     "llm_calls": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Llm Calls"
+     },
+     "model": {
+      "title": "Model",
+      "type": "string"
+     },
+     "outcome": {
+      "title": "Outcome",
+      "type": "string"
+     },
+     "prompt_hash": {
+      "title": "Prompt Hash",
+      "type": "string"
+     },
+     "provider": {
+      "title": "Provider",
+      "type": "string"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "repeat": {
+      "title": "Repeat",
+      "type": "integer"
+     },
+     "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+     },
+     "suite_id": {
+      "title": "Suite Id",
+      "type": "string"
+     },
+     "task_hash": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Task Hash"
+     },
+     "tools": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/ToolSpec"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tools"
+     },
+     "tools_fingerprint": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tools Fingerprint"
+     }
+    },
+    "required": [
+     "suite_id",
+     "started_at",
+     "config_name",
+     "provider",
+     "model",
+     "prompt_hash",
+     "task_hash",
+     "repeat",
+     "outcome"
+    ],
+    "title": "TaskHistoryEntry",
+    "type": "object"
+   },
+   "TaskOutcomesOut": {
+    "properties": {
+     "differs": {
+      "title": "Differs",
+      "type": "boolean"
+     },
+     "outcomes": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Outcomes",
+      "type": "array"
+     },
+     "task_id": {
+      "title": "Task Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "task_id",
+     "outcomes",
+     "differs"
+    ],
+    "title": "TaskOutcomesOut",
+    "type": "object"
+   },
+   "ToolCall": {
+    "additionalProperties": false,
+    "description": "One use of a tool: what was called, with what, and what came back.",
+    "properties": {
+     "arguments": {
+      "additionalProperties": true,
+      "title": "Arguments",
+      "type": "object"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "output": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Output"
+     },
+     "tool_name": {
+      "minLength": 1,
+      "title": "Tool Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "tool_name"
+    ],
+    "title": "ToolCall",
+    "type": "object"
+   },
+   "ToolSpec": {
+    "additionalProperties": false,
+    "description": "A snapshot of one tool exactly as the agent was offered it (Step A.1).",
+    "properties": {
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "parameters": {
+      "additionalProperties": true,
+      "title": "Parameters",
+      "type": "object"
+     },
+     "version": {
+      "minimum": 1.0,
+      "title": "Version",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "name",
+     "version",
+     "description",
+     "parameters"
+    ],
+    "title": "ToolSpec",
+    "type": "object"
+   },
+   "Trace": {
+    "additionalProperties": false,
+    "description": "Full, ordered recording of one run. The central data structure.",
+    "properties": {
+     "steps": {
+      "items": {
+       "$ref": "#/components/schemas/Step"
+      },
+      "title": "Steps",
+      "type": "array"
+     },
+     "task_id": {
+      "minLength": 1,
+      "title": "Task Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "task_id"
+    ],
+    "title": "Trace",
+    "type": "object"
+   }
+  }
+ },
+ "info": {
+  "description": "Stored benchmark runs, traces, failure analysis and comparisons, plus background runs (one at a time). Scripted runs are fixed test fixtures, not AI. Real Gemini runs are OFF unless the server is started with --allow-real-runs. Local use only (127.0.0.1).",
+  "title": "AgentBench-Lite API",
+  "version": "0.9.3"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/": {
+   "get": {
+    "operationId": "index__get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IndexOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     }
+    },
+    "summary": "Index",
+    "tags": [
+     "meta"
+    ]
+   }
+  },
+  "/compare": {
+   "get": {
+    "operationId": "compare_suites_compare_get",
+    "parameters": [
+     {
+      "description": "2 to 5 suite ids (repeat ?ids=)",
+      "in": "query",
+      "name": "ids",
+      "required": true,
+      "schema": {
+       "description": "2 to 5 suite ids (repeat ?ids=)",
+       "items": {
+        "type": "string"
+       },
+       "title": "Ids",
+       "type": "array"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CompareOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unknown suite, run, task or job."
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Conflict: ambiguous short id, incompatible comparison, not analysable, registration mismatch, or a run already in progress."
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "The results database cannot be used."
+     }
+    },
+    "summary": "Compare Suites",
+    "tags": [
+     "suites"
+    ]
+   }
+  },
+  "/estimates": {
+   "post": {
+    "description": "What a run would cost and whether it would be allowed. Never sends anything.",
+    "operationId": "estimate_estimates_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "examples": {
+        "real_pilot_gated": {
+         "description": "Sends REAL requests to Gemini if, and only if, ALL gates pass on the server: started with --allow-real-runs, confirm=true, a budget within --max-real-budget, and a passing registration guard. Otherwise the server answers 403/422/409 and sends nothing. Try POST /estimates first.",
+         "summary": "REAL Gemini run - only if the server was started with --allow-real-runs (uses free quota)",
+         "value": {
+          "agent": "gemini",
+          "budget": 25,
+          "confirm": true,
+          "suite": "shop-hard",
+          "tasks": [
+           "hard-001",
+           "hard-007"
+          ]
+         }
+        },
+        "scripted": {
+         "description": "A SCRIPTED test agent (fixed answers, not AI). No model is called.",
+         "summary": "Scripted run: careful agent on shop-hard (free, always allowed)",
+         "value": {
+          "agent": "careful",
+          "suite": "shop-hard"
+         }
+        },
+        "scripted_subset": {
+         "description": "Falls into its planted traps on purpose: useful to see failure analysis.",
+         "summary": "Scripted run: sloppy agent on two tasks (free)",
+         "value": {
+          "agent": "sloppy",
+          "suite": "shop-hard",
+          "tasks": [
+           "hard-001",
+           "hard-007"
+          ]
+         }
+        }
+       },
+       "schema": {
+        "$ref": "#/components/schemas/RunIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EstimateOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "The request body is larger than 64 KB."
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     }
+    },
+    "summary": "Estimate",
+    "tags": [
+     "runs"
+    ]
+   }
+  },
+  "/health": {
+   "get": {
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HealthOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "The results database cannot be used."
+     }
+    },
+    "summary": "Health",
+    "tags": [
+     "meta"
+    ]
+   }
+  },
+  "/registrations": {
+   "get": {
+    "operationId": "registrations_registrations_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/RegisteredSuiteOut"
+         },
+         "title": "Response Registrations Registrations Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     }
+    },
+    "summary": "Registrations",
+    "tags": [
+     "meta"
+    ]
+   }
+  },
+  "/runs": {
+   "get": {
+    "description": "Jobs started since THIS server started (job status is not kept across restarts).",
+    "operationId": "list_runs_runs_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 20,
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "minimum": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobPage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     }
+    },
+    "summary": "List Runs",
+    "tags": [
+     "runs"
+    ]
+   },
+   "post": {
+    "description": "Start a run in the background (one at a time). Poll GET /runs/{job_id} for progress.",
+    "operationId": "start_run_runs_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "examples": {
+        "real_pilot_gated": {
+         "description": "Sends REAL requests to Gemini if, and only if, ALL gates pass on the server: started with --allow-real-runs, confirm=true, a budget within --max-real-budget, and a passing registration guard. Otherwise the server answers 403/422/409 and sends nothing. Try POST /estimates first.",
+         "summary": "REAL Gemini run - only if the server was started with --allow-real-runs (uses free quota)",
+         "value": {
+          "agent": "gemini",
+          "budget": 25,
+          "confirm": true,
+          "suite": "shop-hard",
+          "tasks": [
+           "hard-001",
+           "hard-007"
+          ]
+         }
+        },
+        "scripted": {
+         "description": "A SCRIPTED test agent (fixed answers, not AI). No model is called.",
+         "summary": "Scripted run: careful agent on shop-hard (free, always allowed)",
+         "value": {
+          "agent": "careful",
+          "suite": "shop-hard"
+         }
+        },
+        "scripted_subset": {
+         "description": "Falls into its planted traps on purpose: useful to see failure analysis.",
+         "summary": "Scripted run: sloppy agent on two tasks (free)",
+         "value": {
+          "agent": "sloppy",
+          "suite": "shop-hard",
+          "tasks": [
+           "hard-001",
+           "hard-007"
+          ]
+         }
+        }
+       },
+       "schema": {
+        "$ref": "#/components/schemas/RunIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Real Gemini runs are disabled on this server (start it with --allow-real-runs)."
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Conflict: ambiguous short id, incompatible comparison, not analysable, registration mismatch, or a run already in progress."
+     },
+     "413": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "The request body is larger than 64 KB."
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     }
+    },
+    "summary": "Start Run",
+    "tags": [
+     "runs"
+    ]
+   }
+  },
+  "/runs/{job_id}": {
+   "get": {
+    "operationId": "get_run_job_runs__job_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "job_id",
+      "required": true,
+      "schema": {
+       "pattern": "^[0-9a-f]{4,32}$",
+       "title": "Job Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unknown suite, run, task or job."
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     }
+    },
+    "summary": "Get Run Job",
+    "tags": [
+     "runs"
+    ]
+   }
+  },
+  "/suites": {
+   "get": {
+    "operationId": "list_suites_suites_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "real_only",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Real Only",
+       "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 20,
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "minimum": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SuitePage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "The results database cannot be used."
+     }
+    },
+    "summary": "List Suites",
+    "tags": [
+     "suites"
+    ]
+   }
+  },
+  "/suites/{suite_id}": {
+   "get": {
+    "operationId": "get_suite_suites__suite_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "suite_id",
+      "required": true,
+      "schema": {
+       "pattern": "^[0-9A-Za-z_-]{4,64}$",
+       "title": "Suite Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SuiteDetailOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unknown suite, run, task or job."
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Conflict: ambiguous short id, incompatible comparison, not analysable, registration mismatch, or a run already in progress."
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "The results database cannot be used."
+     }
+    },
+    "summary": "Get Suite",
+    "tags": [
+     "suites"
+    ]
+   }
+  },
+  "/suites/{suite_id}/failures": {
+   "get": {
+    "operationId": "get_failures_suites__suite_id__failures_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "suite_id",
+      "required": true,
+      "schema": {
+       "pattern": "^[0-9A-Za-z_-]{4,64}$",
+       "title": "Suite Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FailuresOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unknown suite, run, task or job."
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Conflict: ambiguous short id, incompatible comparison, not analysable, registration mismatch, or a run already in progress."
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "The results database cannot be used."
+     }
+    },
+    "summary": "Get Failures",
+    "tags": [
+     "suites"
+    ]
+   }
+  },
+  "/suites/{suite_id}/runs/{run_id}": {
+   "get": {
+    "operationId": "get_run_suites__suite_id__runs__run_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "suite_id",
+      "required": true,
+      "schema": {
+       "pattern": "^[0-9A-Za-z_-]{4,64}$",
+       "title": "Suite Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "pattern": "^[0-9A-Za-z_-]{4,64}$",
+       "title": "Run Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RunDetailOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unknown suite, run, task or job."
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Conflict: ambiguous short id, incompatible comparison, not analysable, registration mismatch, or a run already in progress."
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "The results database cannot be used."
+     }
+    },
+    "summary": "Get Run",
+    "tags": [
+     "suites"
+    ]
+   }
+  },
+  "/tasks/{task_id}/history": {
+   "get": {
+    "operationId": "task_history_tasks__task_id__history_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "task_id",
+      "required": true,
+      "schema": {
+       "pattern": "^[0-9A-Za-z_.-]{1,64}$",
+       "title": "Task Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 20,
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "minimum": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HistoryPage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unknown suite, run, task or job."
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "The results database cannot be used."
+     }
+    },
+    "summary": "Task History",
+    "tags": [
+     "tasks"
+    ]
+   }
+  },
+  "/tasks/{task_id}/measure": {
+   "get": {
+    "operationId": "task_measure_tasks__task_id__measure_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "task_id",
+      "required": true,
+      "schema": {
+       "pattern": "^[0-9A-Za-z_.-]{1,64}$",
+       "title": "Task Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MeasureOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unknown suite, run, task or job."
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Invalid input (wrong format, out of range, a missing safety confirmation or budget)."
+     },
+     "500": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "Unexpected server error (only its type is reported - never a traceback or a secret)."
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorResponse"
+        }
+       }
+      },
+      "description": "The results database cannot be used."
+     }
+    },
+    "summary": "Task Measure",
+    "tags": [
+     "tasks"
+    ]
+   }
+  }
+ }
+}

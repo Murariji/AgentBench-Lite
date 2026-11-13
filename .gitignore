@@ -36,3 +36,8 @@ practice/
 .idea/
 Thumbs.db
 .DS_Store
+
+# --- Dashboard (Phase 10): installed packages and build output are recreated, never committed ---
+node_modules/
+dashboard/dist/
+dashboard/coverage/

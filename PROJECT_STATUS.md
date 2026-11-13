@@ -15,6 +15,26 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 10 — React dashboard: 🔶 in progress. Step 10.1 setup + connection page ✅** (dashboard: 9 tests
+passed, type check clean, build OK; Python: 701 passed, 0 failed, 0 skipped — when run by Claude; user to
+confirm). Step 10.2 (runs, run details, trace viewer) waits for approval.
+- Verified first: the trace endpoint and offset pagination already exist; the pass-rate chart has the data,
+  but run summaries don't say whether a run was a SUBSET — decision (fetch details per point, or add
+  `tasks_fingerprint` + `registration_status` to SuiteSummaryOut via a deliberate contract update) needed
+  before Step 10.3.
+- `dashboard/`: Vite 5.4.11 + React 18.3.1 + TypeScript 5.6.3 (strict) + Tailwind 3.4.15; tests with Vitest
+  2.1.8 + Testing Library (jsdom, fake fetch); `openapi-typescript` 7.4.4. Exact versions, lock file,
+  `node_modules/` and `dashboard/dist/` git-ignored.
+- Types: `scripts/export_openapi.py` → `dashboard/openapi.json` → `npm run gen:types` → `src/api/schema.d.ts`;
+  `tests/test_dashboard_openapi.py` (openapi.json == backend) + `npm run check:types` (types == openapi.json).
+- `src/api/client.ts` (the only fetch; `ApiError` for API errors, network failures, unexpected answers),
+  `src/api/useApi.ts` (loading/error/ready + reload), `src/pages/ConnectionPage.tsx` (GET /health).
+- Demo: API on 127.0.0.1:8000 (copy of the data) + Vite on localhost:5173; `/health` answered with
+  `access-control-allow-origin: http://localhost:5173`, a foreign origin got none. The Chrome extension was
+  not connected, so no automated browser screenshot; the user opens http://localhost:5173 to see it.
+  Note: Vite binds `localhost` (IPv6 [::1]) — use http://localhost:5173.
+- Notes: `docs/learning/phase-10-notes.md`, `dashboard/README.md`.
+
 **Phase 9 — FastAPI backend: ✅ complete (9.1, 9.2, 9.3)** (tests: 699 passed, 0 failed, 0 skipped when run
 by Claude; 50 new in 9.3 — user to confirm). Phase 10 (React dashboard) waits for explicit approval.
 A.4 Stage 2 can still be run by the user at any time through the CLI.
@@ -579,6 +599,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 10 — React + TypeScript + Tailwind + Recharts dashboard against the pinned API contract (needs Node.js). Plan first; waiting for explicit approval. In parallel, any time: A.4 Stage 2 via the CLI.
+Phase 10, Step 10.2 — runs list (paginated), run details, trace viewer (React Router). Waiting for approval. Before 10.3: decide how the chart identifies subset runs. In parallel, any time: A.4 Stage 2.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.
