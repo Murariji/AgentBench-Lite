@@ -15,6 +15,18 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**A.4 Stage 1 pilot (user ran it): shop-hard v1 SUBSET, hard-001 + hard-007, 1 repeat — 2/2 passed,
+COMPLETE, 14 requests (cap 25), 0 retries.** Suite f8e7c26f, 2026-11-13 09:34 UTC, gemini-3.5-flash-lite (as
+requested), config dfba9fdfb262, tools c1af5a87019e, dataset 62143ef0c309; both tasks matched their registered
+definitions before any request. Manual trace reading (not a rule result):
+- hard-001 (9 of 10 steps): sorted order values → checked COUNT = 150 → ROW_NUMBER() rows 75/76 (10995, 10996)
+  → calculator (10995 + 10996) / 2 = 10995.5. Avoided both traps (mean, single middle value). Under the shop
+  suite's 8-step limit this correct run would have FAILED by step limit — the pre-registered max_steps = 10
+  mattered.
+- hard-007 (5 steps): wrote the full %w mapping in SQL (CASE '0' → Sunday, '1' → Monday, …) → Monday (28).
+- Cost ~7 requests per task → Stage 2 (9 tasks) realistic ~63–81; the proposed cap of 100 has margin.
+- A 2-task pilot is not a suite score; early hint only: the model handled both traps carefully.
+
 **Benchmark v2 — Step A.4a Registration guard: ✅ complete (offline)** (tests: 580 passed, 0 failed,
 0 skipped when run by Claude — user to confirm). No API calls. Stage 1 (pilot) is approved in principle
 (hard-001 + hard-007, 1 repeat, hard budget 25) but runs ONLY when the user starts it; Stage 2 stays
@@ -499,6 +511,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Benchmark v2, Step A.4 Stage 1 — pilot, started by the user only: `python scripts/run_benchmark.py --agent gemini --suite shop-hard --tasks hard-001 hard-007 --budget 25` (estimate), then the same with `--yes --save`. Then review together; Stage 2 needs explicit approval.
+Benchmark v2, Step A.4 Stage 2 — all 9 shop-hard tasks, 1 repeat, hard cap 100 (realistic ~63–81). NOT approved yet: waits for the user's explicit approval after reviewing the Stage 1 pilot. Stage 3 (repeats) not decided.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

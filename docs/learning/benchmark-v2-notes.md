@@ -210,3 +210,22 @@ never a wrong answer. The budget counts every actual request, retries included.
 17. The pilot runs 2 of 9 tasks. Why must its report never say "shop-hard: 2/2"?
 18. A retry happens during the pilot. Does it count against the 25-request budget? Why?
 19. Why is the model id recorded "as requested", and what can still change behind it?
+
+## A.4 Stage 1 — pilot result
+
+**A.4 Stage 1 pilot (user ran it): shop-hard v1 SUBSET, hard-001 + hard-007, 1 repeat — 2/2 passed,
+COMPLETE, 14 requests (cap 25), 0 retries.** Suite f8e7c26f, 2026-11-13 09:34 UTC, gemini-3.5-flash-lite (as
+requested), config dfba9fdfb262, tools c1af5a87019e, dataset 62143ef0c309; both tasks matched their registered
+definitions before any request. Manual trace reading (not a rule result):
+- hard-001 (9 of 10 steps): sorted order values → checked COUNT = 150 → ROW_NUMBER() rows 75/76 (10995, 10996)
+  → calculator (10995 + 10996) / 2 = 10995.5. Avoided both traps (mean, single middle value). Under the shop
+  suite's 8-step limit this correct run would have FAILED by step limit — the pre-registered max_steps = 10
+  mattered.
+- hard-007 (5 steps): wrote the full %w mapping in SQL (CASE '0' → Sunday, '1' → Monday, …) → Monday (28).
+- Cost ~7 requests per task → Stage 2 (9 tasks) realistic ~63–81; the proposed cap of 100 has margin.
+- A 2-task pilot is not a suite score; early hint only: the model handled both traps carefully.
+
+**What this teaches**
+- A pilot checks the EXPERIMENT (prompts understood, formats followed, grading works, real cost), not the model.
+- Read passes too: the traces show HOW the traps were avoided (a window-function median, an explicit weekday map).
+- Design choices matter and must be fixed in advance: with 8 steps, a correct median run would have failed.
