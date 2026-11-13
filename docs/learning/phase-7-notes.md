@@ -72,3 +72,36 @@ passed runs into failures, and the program never claims "saved" when it wasn't.
 3. Why is `f"... WHERE model = '{model}'"` dangerous even though WE write that code?
 4. Why must `results.db` never be the same file as `shop.db`?
 5. shop-010's tolerance is changed. How can you still tell which tolerance an old run was graded with?
+
+## Step 7.2 — asking questions with SQL
+
+**Counting in SQL instead of Python (`list_suites`).**
+```sql
+SELECT s.suite_id, COALESCE(SUM(r.outcome = 'passed'), 0) AS passed, ...
+FROM suite_runs s LEFT JOIN run_records r ON r.suite_id = s.suite_id
+GROUP BY s.suite_id ORDER BY s.started_at DESC
+```
+- `outcome = 'passed'` is 1 or 0, so `SUM` counts the passes.
+- `LEFT JOIN` keeps a suite even if it has no records (all skipped); `COALESCE` turns its NULL sum into 0.
+- A test checks these SQL counts against `compute_metrics()` — two independent methods must agree,
+  like the reference SQL that proved the shop answer key.
+
+**Time order = text order.** Timestamps are stored as UTC ISO text (`2026-11-13T06:25:18+00:00`), so
+sorting the strings sorts by time. Mixing time zones would break that, so `_iso()` converts to UTC.
+
+**`UNION ALL` (`task_history`).** Executed runs and skipped runs live in different tables; `UNION ALL`
+stacks the two result lists into one, so a skipped run still appears in a task's history.
+
+**Short ids.** `resolve("0af9")` finds the one suite starting with those characters (like git).
+`substr(suite_id, 1, ?) = ?` instead of `LIKE ? || '%'`, because in LIKE the characters `%` and `_`
+are wildcards — user input must stay plain text.
+
+**Persistence failure ≠ benchmark failure (`save_with_recovery`).** The benchmark already ran; a
+broken disk must not change that. So the save never raises: it returns `saved=False`, the error, and a
+JSON recovery copy. The script prints a WARNING, the import command, and exits with code 1 — and
+never prints "Stored" for a transaction that didn't commit.
+
+## Self-check (7.2)
+6. Why `LEFT JOIN` and not `JOIN` in `list_suites`? Which suite would disappear with `JOIN`?
+7. Why is `substr()` safer than `LIKE` for matching a short id typed by a user?
+8. The disk is full at the end of a 20-minute Gemini run. What does the user see, and what is lost?

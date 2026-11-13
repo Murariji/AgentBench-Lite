@@ -9,16 +9,21 @@
 
 Real runs: >= 6 s between requests, a hard request budget (--budget, default 80) and a
 circuit breaker that stops the suite on auth / quota errors.
+
+Every finished suite is stored automatically in data/results.db (see scripts/results.py).
+If that save fails, the result is NOT lost: a JSON recovery copy is written to results/.
 """
 
 import argparse
 import hashlib
+import sys
 
 from agentbench.benchmark import estimate_requests, run_suite
 from agentbench.datasets import DEFAULT_DB_PATH, build_shop_db
 from agentbench.models import AgentConfig
 from agentbench.report import compare, export_json, format_report
 from agentbench.runner import DEFAULT_SYSTEM_PROMPT
+from agentbench.storage import DEFAULT_RESULTS_DB, save_with_recovery
 from agentbench.suites import SHOP_TASKS, shop_registry
 from agentbench.suites.shop_agents import scripted_agent, scripted_config
 from agentbench.tools import ReadOnlySQLite
@@ -51,6 +56,7 @@ if __name__ == "__main__":
     parser.add_argument("--save", action="store_true", help="export JSON results to results/")
     parser.add_argument("--budget", type=int, default=DEFAULT_BUDGET, help="hard cap on real requests")
     parser.add_argument("--yes", action="store_true", help="confirm a REAL (quota-using) run")
+    parser.add_argument("--results-db", default=str(DEFAULT_RESULTS_DB), help="where runs are stored")
     args = parser.parse_args()
 
     if args.repeats < 1:
@@ -88,9 +94,24 @@ if __name__ == "__main__":
                 suites.append(run_suite(SHOP_TASKS, scripted_config(kind), scripted_agent(kind), tools,
                                         suite_name="shop", repeats=args.repeats, dataset=dataset))
 
+    all_stored = True
     for suite in suites:
         print("\n" + format_report(suite))
         if args.save:
             print(f"\nSaved: {export_json(suite)}")
+        # Persistence is reported SEPARATELY: a failed save never changes the benchmark result.
+        outcome = save_with_recovery(suite, args.results_db)
+        if outcome.saved:
+            print(f"Stored     : {args.results_db} (suite id {suite.suite_id[:8]})")
+        else:
+            all_stored = False
+            print(f"\nWARNING: the benchmark finished, but saving it to {args.results_db} FAILED.\n"
+                  f"  Reason : {outcome.error}\n"
+                  f"  The results above are still valid; nothing was stored in the database.")
+            if outcome.recovery_path:
+                print(f"  Recovery copy: {outcome.recovery_path}\n"
+                      f"  Import it later with: python scripts/results.py import {outcome.recovery_path}")
     if len(suites) > 1:
         print("\n=== COMPARISON ===\n" + compare(suites))
+    if not all_stored:
+        sys.exit(1)

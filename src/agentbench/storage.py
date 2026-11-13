@@ -19,11 +19,16 @@ shop.db: the agent's SQL tool can never see benchmark results or answers.
 import hashlib
 import json
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from pydantic import BaseModel
+
+from agentbench.metrics import Rate
 from agentbench.models import (AgentConfig, Check, EvaluationResult, RunRecord, RunResult,
                                SkippedRun, Step, SuiteResult, Task, ToolCall, Trace)
+from agentbench.report import RESULTS_DIR, export_json
 
 DEFAULT_RESULTS_DB = Path("data") / "results.db"  # git-ignored (*.db)
 SCHEMA_VERSION = 1
@@ -145,12 +150,77 @@ class SchemaVersionError(StorageError):
     pass
 
 
+class SuiteSummary(BaseModel):
+    """One line of "all my benchmark runs". Counts come from SQL aggregation, not Python."""
+
+    suite_id: str
+    suite_name: str
+    config_name: str
+    provider: str
+    model: str
+    repeats: int
+    started_at: datetime
+    finished_at: datetime | None
+    scheduled_runs: int
+    passed: int
+    failed: int
+    infra_errors: int
+    skipped: int
+    total_llm_calls: int
+    stop_reason: str | None
+
+    @property
+    def is_scripted(self) -> bool:
+        return self.provider == "fake"
+
+    @property
+    def pass_rate(self) -> Rate:
+        return Rate(passed=self.passed, eligible=self.passed + self.failed)
+
+    @property
+    def complete(self) -> bool:
+        return (self.skipped == 0 and self.infra_errors == 0
+                and self.passed + self.failed == self.scheduled_runs)
+
+
+class TaskHistoryEntry(BaseModel):
+    """One scheduled run of one task in one suite: executed (passed/failed/infra) or skipped."""
+
+    suite_id: str
+    started_at: datetime
+    config_name: str
+    provider: str
+    model: str
+    prompt_hash: str
+    task_hash: str | None          # which VERSION of the task (None = definition not recorded)
+    repeat: int
+    outcome: str                   # passed | failed | infra_error | skipped
+    error_kind: str | None = None
+    llm_calls: int | None = None
+    duration_seconds: float | None = None
+    final_answer: str | None = None
+    reason: str | None = None      # only for skipped
+
+
+@dataclass(frozen=True)
+class SaveOutcome:
+    """What happened when a finished benchmark was persisted. Execution already succeeded."""
+
+    saved: bool
+    suite_id: str
+    error: str | None = None
+    recovery_path: Path | None = None   # JSON copy written because the database save failed
+
+
 def task_hash(task: Task) -> str:
     return hashlib.sha256(task.model_dump_json().encode("utf-8")).hexdigest()
 
 
 def _iso(value: datetime | None) -> str | None:
-    return None if value is None else value.isoformat()
+    # Stored in UTC so that text order == time order ("newest first" can sort the strings).
+    if value is None:
+        return None
+    return (value.astimezone(timezone.utc) if value.tzinfo else value).isoformat()
 
 
 class ResultStore:
@@ -305,6 +375,65 @@ class ResultStore:
             request_budget=row["request_budget"], estimated_requests=row["estimated_requests"],
             stop_reason=row["stop_reason"])
 
+    def resolve(self, prefix: str) -> str:
+        """Full suite_id from its first characters (like a short git commit id)."""
+        if not prefix:
+            raise SuiteNotFoundError("empty suite id")
+        # substr() instead of LIKE: characters such as % or _ in the input stay plain text.
+        rows = self._conn.execute("SELECT suite_id FROM suite_runs WHERE substr(suite_id, 1, ?) = ?",
+                                  (len(prefix), prefix)).fetchall()
+        if not rows:
+            raise SuiteNotFoundError(f"no suite id starts with {prefix!r}")
+        if len(rows) > 1:
+            raise SuiteNotFoundError(f"{prefix!r} matches {len(rows)} suites - type more characters")
+        return rows[0]["suite_id"]
+
+    # ---------- queries (what the dashboard will ask) ------------------------------------
+
+    def list_suites(self, *, real_only: bool = False, limit: int | None = None) -> list[SuiteSummary]:
+        """All stored suite runs, newest first, with pass/fail/infra/skipped counts from SQL."""
+        rows = self._conn.execute(
+            """
+            SELECT s.suite_id, s.suite_name, s.config_name, s.provider, s.model, s.repeats,
+                   s.started_at, s.finished_at, s.stop_reason,
+                   (SELECT COUNT(*) FROM suite_tasks t WHERE t.suite_id = s.suite_id) * s.repeats
+                                                                        AS scheduled_runs,
+                   COALESCE(SUM(r.outcome = 'passed'), 0)               AS passed,
+                   COALESCE(SUM(r.outcome = 'failed'), 0)               AS failed,
+                   COALESCE(SUM(r.outcome = 'infra_error'), 0)          AS infra_errors,
+                   (SELECT COUNT(*) FROM skipped_runs k WHERE k.suite_id = s.suite_id) AS skipped,
+                   COALESCE(SUM(r.llm_calls), 0)                        AS total_llm_calls
+            FROM suite_runs s
+            LEFT JOIN run_records r ON r.suite_id = s.suite_id      -- LEFT: keep suites with 0 runs
+            WHERE (? = 0 OR s.provider <> 'fake')
+            GROUP BY s.suite_id
+            ORDER BY s.started_at DESC, s.saved_at DESC
+            LIMIT ?
+            """, (int(real_only), -1 if limit is None else limit)).fetchall()   # LIMIT -1 = no limit
+        return [SuiteSummary(**dict(row)) for row in rows]
+
+    def task_history(self, task_id: str) -> list[TaskHistoryEntry]:
+        """Every scheduled run of one task across all stored suites, newest suite first."""
+        rows = self._conn.execute(
+            """
+            SELECT s.suite_id, s.started_at, s.config_name, s.provider, s.model, s.prompt_hash,
+                   st.task_hash, r.repeat_index AS repeat, r.outcome, r.error_kind, r.llm_calls,
+                   r.duration_seconds, r.final_answer, NULL AS reason
+            FROM run_records r
+            JOIN suite_runs s   ON s.suite_id = r.suite_id
+            JOIN suite_tasks st ON st.suite_id = r.suite_id AND st.task_id = r.task_id
+            WHERE r.task_id = ?
+            UNION ALL
+            SELECT s.suite_id, s.started_at, s.config_name, s.provider, s.model, s.prompt_hash,
+                   st.task_hash, k.repeat_index, 'skipped', NULL, NULL, NULL, NULL, k.reason
+            FROM skipped_runs k
+            JOIN suite_runs s   ON s.suite_id = k.suite_id
+            JOIN suite_tasks st ON st.suite_id = k.suite_id AND st.task_id = k.task_id
+            WHERE k.task_id = ?
+            ORDER BY 2 DESC, 8
+            """, (task_id, task_id)).fetchall()
+        return [TaskHistoryEntry(**dict(row)) for row in rows]
+
     def _load_record(self, row: sqlite3.Row) -> RunRecord:
         run_id = row["run_id"]
         steps = [Step(index=s["step_index"], llm_output=s["llm_output"], timestamp=s["timestamp"],
@@ -327,3 +456,24 @@ class ResultStore:
                                           passed=bool(row["evaluation_passed"]), checks=checks)
         return RunRecord(task_id=row["task_id"], repeat=row["repeat_index"], difficulty=row["difficulty"],
                          run=run, evaluation=evaluation, outcome=row["outcome"])
+
+
+def save_with_recovery(suite: SuiteResult, path: str | Path = DEFAULT_RESULTS_DB,
+                       recovery_dir: str | Path = RESULTS_DIR) -> SaveOutcome:
+    """Persist a FINISHED benchmark. Never raises: a failed save is reported, not hidden.
+
+    The benchmark result is not changed either way. If the database save fails, a JSON copy is
+    written as a recovery path (it can be imported later with scripts/results.py import).
+    """
+    try:
+        with ResultStore(path) as store:
+            store.save(suite)
+        return SaveOutcome(saved=True, suite_id=suite.suite_id)
+    except (StorageError, sqlite3.Error, OSError) as exc:
+        error = f"{type(exc).__name__}: {exc}"
+    try:
+        recovery = export_json(suite, recovery_dir)
+    except OSError as exc:  # even the backup failed: say so, never pretend
+        return SaveOutcome(saved=False, suite_id=suite.suite_id,
+                           error=f"{error}; JSON recovery export also failed: {exc}")
+    return SaveOutcome(saved=False, suite_id=suite.suite_id, error=error, recovery_path=recovery)

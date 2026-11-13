@@ -15,7 +15,36 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Phase 7 — Step 7.1 Result storage (save/load): ✅ complete** (tests: **304 passed**; 26 new). Step 7.2 (queries, auto-save, `scripts/results.py`) waits for approval.
+**Phase 7 — Result storage: ✅ complete** (Steps 7.1, 7.2). Tests: **323 passed** (run by Claude;
+19 new in 7.2 — user to confirm).
+
+**Step 7.2 Queries, auto-save, results CLI: ✅ complete.**
+- `ResultStore.list_suites(real_only=, limit=) -> [SuiteSummary]`: newest first (`ORDER BY started_at
+  DESC`; timestamps stored in UTC so text order = time order); passed / failed / infra / skipped /
+  requests counted by SQL (`LEFT JOIN` + `GROUP BY` + `SUM(outcome = 'passed')`). Tested to equal
+  `compute_metrics()` for complete, repeated and incomplete suites.
+- `task_history(task_id) -> [TaskHistoryEntry]`: every scheduled run of a task across suites, newest
+  first, with config, model, prompt hash and **task version** (`task_hash`); skipped runs included
+  (`UNION ALL`) with their reason.
+- `resolve(prefix)`: short ids like git (`substr()`, not `LIKE`, so `%` / `_` stay plain text);
+  unknown or ambiguous → `SuiteNotFoundError`.
+- `save_with_recovery(suite, path, recovery_dir) -> SaveOutcome`: never raises; on any database
+  failure it writes a JSON recovery copy and reports the error. Execution and persistence stay separate.
+- `scripts/run_benchmark.py`: every finished suite is stored automatically (`--results-db`, default
+  `data/results.db`). On failure: a WARNING that the results are still valid, the reason, the recovery
+  file, the import command, and exit code 1. Never claims "Stored" unless the transaction committed.
+- `scripts/results.py [--db]`: `list [--real] [--limit]`, `show <id>`, `compare <id> <id> ...`,
+  `history <task_id>`, `import <files...>` (a duplicate prints "already stored", nothing changes).
+- Report: new `Suite id` line.
+- Fix (found by the user comparing the real runs 1×10 vs 3×10): an unfair comparison printed
+  "NOT A FAIR COMPARISON" and then "differences reflect run-to-run variation only". Now, when the setup
+  differs, the configuration line is information only ("no dimension changed either …" / "also
+  changed: …") and never attributes the differences. New test; tests: **324 passed**.
+- Trial (scratch DB): both real Gemini exports imported (`743cde41` 10×1, `0af951e0` 10×3), the same
+  file again → "already stored"; `--compare` stored 2 scripted suites; `list` and `history shop-010`
+  correct (6 runs, all passed, one task version).
+
+**Step 7.1 Result storage (save/load): ✅ complete** Result storage (save/load): ✅ complete** (tests: **304 passed**; 26 new).
 - `src/agentbench/storage.py`: `ResultStore(path=data/results.db)` — the only code that talks to the
   results DB (repository pattern). `save(suite) -> suite_id` in ONE transaction (`BEGIN IMMEDIATE` …
   `COMMIT`, `ROLLBACK` on any failure → `StorageError`, in-memory result untouched), `load(suite_id)`
@@ -276,7 +305,7 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 - [x] **Phase 5** — Evaluators: exact-match, contains, tool-usage; later LLM-as-judge
 - [x] **Phase 6** — Benchmark runner: task suites, batch runs, metrics, agent configs + comparison;
   more realistic tools (SQL query over sample SQLite DB, date calculator, unit converter, file reader)
-- [ ] **Phase 7** — Storage: SQLite for runs & traces (adds `run_id`)
+- [x] **Phase 7** — Storage: SQLite for runs & traces (adds `run_id`)
 - [ ] **Phase 8** — Failure analysis: categorize failures
 - [ ] **Phase 9** — FastAPI backend: REST API over the framework and database
 - [ ] **Phase 10** — Dashboard: React + TypeScript + Tailwind + Recharts
@@ -286,8 +315,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 7, Step 7.2 — `list_suites()` (newest first, pass counts by SQL `GROUP BY`, checked against
-`compute_metrics()`), `task_history(task_id)`, automatic save from `run_benchmark.py` (a failed save
-is reported separately; the result is kept and can be exported), `scripts/results.py
-list|show|compare|import`. Candidates noted: record retried errors in traces, calculator `round()`,
-harder tasks, estimate 6 requests per run. Waiting for user approval.
+Phase 8 — Failure analysis (categorize why runs fail). Plan to be presented; needs explicit approval.
+Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
+estimate 6 requests per run.

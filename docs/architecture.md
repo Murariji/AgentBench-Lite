@@ -107,5 +107,7 @@ suite_runs ─┬─< suite_tasks >── task_versions     one row per distinct
   parameter, and a whole suite saved in one transaction (all or nothing).
 - **Schema version:** `PRAGMA user_version` (currently 1). A file with another version, or tables
   without a version, is refused rather than misread.
+- **Queries:** `list_suites()` (newest first, counts by SQL `GROUP BY`) and `task_history(task_id)`
+  (every run of a task, including skipped ones, with its task version) are what the API will serve.
 - **Persistence is not execution:** a failed save raises `StorageError` and never changes the benchmark
   result, which stays in memory and can still be exported to JSON.

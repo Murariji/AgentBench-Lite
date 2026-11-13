@@ -57,6 +57,7 @@ def format_report(suite: SuiteResult, metrics: SuiteMetrics | None = None) -> st
     lines = [
         f"Suite      : {suite.suite_name} ({len(suite.task_ids)} tasks x {suite.repeats} repeat(s) "
         f"= {m.scheduled_runs} scheduled runs)",
+        f"Suite id   : {suite.suite_id}  (started {suite.started_at:%Y-%m-%d %H:%M} UTC)",
         f"Agent      : {agent_kind(suite)}",
         f"Config     : {c.name}  [provider {c.provider}, model {c.model}, prompt {c.prompt_hash}, "
         f"max attempts {c.max_attempts}]",
@@ -150,7 +151,12 @@ def compare(suites: list[SuiteResult]) -> str:
                      + ". Results are not comparable.")
     if any(not m.complete for m in metrics):
         lines.append("WARNING: at least one run is INCOMPLETE; compare pass rates with their denominators.")
-    if not changed:
+    if unfair:
+        # Not comparable: list what changed for information, but never explain the differences.
+        lines.append("Configuration: " + ("no dimension changed either; the difference is in how the runs "
+                                          "were set up (above), so no conclusion about the agent is possible."
+                                          if not changed else "also changed: " + ", ".join(changed) + "."))
+    elif not changed:
         lines.append("No configuration dimension changed: differences reflect run-to-run variation only.")
     elif len(changed) == 1:
         lines.append(f"Changed dimension: {changed[0]} (the only configuration difference).")

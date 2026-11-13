@@ -21,9 +21,10 @@ def db(tmp_path_factory):
         yield conn
 
 
-def run(db, kind="careful", config=None, tasks=SHOP_TASKS, dataset="shop.db sha256:test", make_llm=None):
+def run(db, kind="careful", config=None, tasks=SHOP_TASKS, dataset="shop.db sha256:test", make_llm=None,
+        repeats=1):
     return run_suite(tasks, config or scripted_config(kind), make_llm or scripted_agent(kind),
-                     shop_registry(db), suite_name="shop", dataset=dataset, progress=None)
+                     shop_registry(db), suite_name="shop", dataset=dataset, progress=None, repeats=repeats)
 
 
 @pytest.fixture(scope="module")
@@ -120,6 +121,20 @@ def test_different_tasks_or_dataset_is_not_fair(db, careful):
     other_data = run(db, "careful", dataset="shop.db sha256:different")
     text = compare([careful, other_data])
     assert "NOT A FAIR COMPARISON" in text and "dataset" in text.splitlines()[-3]
+
+
+def test_unfair_comparison_never_explains_the_differences(db, careful, sloppy):
+    # Found with real data: repeats 1 vs 3 printed "NOT A FAIR COMPARISON" AND then
+    # "differences reflect run-to-run variation only" - two contradicting conclusions.
+    twice = run(db, "careful", repeats=2)
+    text = compare([careful, twice])
+    assert "NOT A FAIR COMPARISON: these differ between runs: repeats." in text
+    assert "run-to-run variation" not in text
+    assert "Configuration: no dimension changed either" in text
+    sloppy_twice = run(db, "sloppy", repeats=2)
+    text = compare([careful, sloppy_twice])                       # unfair AND the model changed
+    assert "Configuration: also changed: model." in text
+    assert "Changed dimension" not in text                       # no attribution when unfair
 
 
 def test_compare_needs_two_results(careful):

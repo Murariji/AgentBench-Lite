@@ -4,7 +4,8 @@
 record every step, measure performance, analyze why they fail, and view it all in a dashboard.
 
 > **Status: active development.** The Python framework (agent loop, Gemini + FakeLLM, SQL tools,
-> evaluators, benchmark runner, metrics, comparison) exists today; storage, API and dashboard are next.
+> evaluators, benchmark runner, metrics, comparison) and SQLite result storage exist today;
+> failure analysis, the API and the dashboard are next.
 > Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
 
 ## What it will do
@@ -20,7 +21,8 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **Analyzer** | Categorize failures (wrong tool, bad arguments, loops, wrong answer) | 🗓️ Planned |
 | **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | ✅ Implemented |
 | **Benchmarks** | Run task suites, compute metrics, compare agent configurations, free-tier safety | ✅ Implemented |
-| **API** | FastAPI REST backend with SQLite storage | 🗓️ Planned |
+| **Storage** | SQLite history of every run, trace and check; queries and a results CLI | ✅ Implemented |
+| **API** | FastAPI REST backend over the framework and storage | 🗓️ Planned |
 | **Dashboard** | React + TypeScript UI for runs, traces and charts | 🗓️ Planned |
 
 ## Implemented so far
@@ -91,6 +93,31 @@ Each run prints the execution trace (every SQL query and its result) and the eva
 check with its reason). The `--mistake` run shows why execution and evaluation are separate: the
 agent finished and used the right tool, but its answer was wrong.
 
+## Stored results (SQLite)
+
+Every finished benchmark is saved automatically in `data/results.db` (git-ignored). Browse it:
+
+```powershell
+python scripts/results.py list                      # all runs, newest first (--real: only real LLMs)
+python scripts/results.py show 0af951e0             # full report (short ids work, like git)
+python scripts/results.py compare 743cde41 0af951e0 # side by side, with the fairness check
+python scripts/results.py history shop-010          # one task across every run
+python scripts/results.py import results/*.json     # store exported JSON (duplicates are refused)
+```
+
+- **Why SQLite:** built into Python (no server, no dependency, ₹0), one file, real SQL.
+- **Why a separate file:** `shop.db` is what the agent may read; `results.db` holds answers, traces and
+  scores. The agent's SQL tool can never reach it.
+- **Schema:** `suite_runs` → `run_records` → `steps` / `checks`, plus `skipped_runs`, and
+  `task_versions` (each distinct task definition stored once, by content hash), so old results keep
+  the exact prompt, answer and tolerance they were graded with. See
+  [docs/architecture.md](docs/architecture.md#result-storage-phase-7).
+- **Transactions:** a whole suite is saved in one transaction, so a crash never leaves half a run.
+- **Parameterized SQL:** every value is sent as a `?` parameter, never pasted into SQL text.
+- **Schema version:** stored in `PRAGMA user_version`. A file with an unknown version is refused.
+- **If saving fails:** the benchmark result is still valid. A warning explains why, and a JSON
+  recovery copy is written to `results/` for a later `import`. Nothing is reported as saved unless it was.
+
 ## Benchmark metrics
 
 | Metric | Meaning |
@@ -137,7 +164,8 @@ python scripts/build_shop_db.py   # builds data/shop.db (refuses to overwrite; -
 - pytest (testing)
 - SQLite (Python's built-in `sqlite3`) for the benchmark database
 - Google Gemini API, free tier (`google-genai`), `python-dotenv` — optional extra
-- Planned: SQLite, FastAPI, React + TypeScript + Tailwind CSS + Recharts, Docker
+- SQLite (built-in `sqlite3`) for stored results, `data/results.db`
+- Planned: FastAPI, React + TypeScript + Tailwind CSS + Recharts, Docker
 
 ## Getting started
 
