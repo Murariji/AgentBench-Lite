@@ -19,7 +19,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **Evaluator** | Decide whether the task was completed correctly | ✅ Implemented (deterministic) |
 | **Analyzer** | Categorize failures (wrong tool, bad arguments, loops, wrong answer) | 🗓️ Planned |
 | **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | ✅ Implemented |
-| **Benchmarks** | Run task suites, compute metrics, compare agent configurations | ✅ Implemented (real-LLM suite safety: next) |
+| **Benchmarks** | Run task suites, compute metrics, compare agent configurations, free-tier safety | ✅ Implemented |
 | **API** | FastAPI REST backend with SQLite storage | 🗓️ Planned |
 | **Dashboard** | React + TypeScript UI for runs, traces and charts | 🗓️ Planned |
 
@@ -60,6 +60,23 @@ python scripts/run_benchmark.py --agent sloppy --save   # also writes results/<s
 
 The careful and sloppy agents are **scripted** (fixed answers written in advance, not AI). They exist
 to test the benchmark pipeline at zero cost, and every report labels them as such.
+
+### Real run (Gemini free tier)
+
+```powershell
+python scripts/run_benchmark.py --agent gemini          # prints the request estimate, sends nothing
+python scripts/run_benchmark.py --agent gemini --yes    # runs it: >= 6 s pacing, hard cap of 80 requests
+```
+
+Safety: an estimate before any request, `--yes` required, a **hard request budget** that can never be
+exceeded, and a **circuit breaker** that stops the suite on auth or quota errors (remaining runs are
+marked skipped; the suite is reported as incomplete, never as failed by the agent).
+
+**First result** (`gemini-3.5-flash-lite`, 1 repeat): **10/10 passed** (easy 2/2, medium 4/4, hard 4/4),
+57 requests, avg 5.7 steps and ~2.6k input tokens per task, 351 s in total. Two tool errors (the model
+tried `round(...)` and `datetime(...)` in the calculator) were recovered by the model itself.
+One run with no repeats does not measure consistency (pass^k), and a perfect score suggests the suite
+needs harder tasks to separate configurations. Both are planned.
 
 ```powershell
 python scripts/run_shop_task.py             # scripted agent solves shop-003  -> PASSED

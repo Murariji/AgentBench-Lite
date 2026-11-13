@@ -24,11 +24,15 @@ LLMErrorKind = Literal[
     "network",           # no internet, timeout, connection lost -> bounded retry
     "bad_request",       # our request was invalid (400/404)     -> stop
     "invalid_response",  # reply had no text and no tool call    -> stop
+    "budget_exhausted",  # OUR request budget is used up (never sent) -> stop the suite
     "unknown",           # anything else                         -> stop
 ]
 
 # Temporary problems: trying again later can work. Everything else is a hard stop.
 RETRYABLE_KINDS: frozenset[str] = frozenset({"rate_limit", "server", "network"})
+
+# Errors raised BEFORE a request leaves our program: they don't count as LLM calls.
+NOT_SENT_KINDS: frozenset[str] = frozenset({"budget_exhausted"})
 
 
 class LLMError(Exception):

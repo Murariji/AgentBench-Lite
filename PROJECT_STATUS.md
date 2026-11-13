@@ -15,7 +15,34 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Phase 6 — Step 6.2 Scripted agents + comparison + JSON export: ✅ complete.** Tests: **264 passed**
+**Phase 6 — Benchmark runner: ✅ complete** (Steps 6.1, 6.2, 6.3).
+
+**Step 6.3 Free-tier safety for real runs: ✅ complete.** Tests: **278 passed** (user-reported; 14 new).
+- `src/agentbench/llm/pacing.py`: `Pacer` (≥ N s between request starts, shared by the whole suite),
+  `RequestBudget` (HARD cap: refuses before sending, new error kind `budget_exhausted`),
+  `RateLimitedLLM` (decorator: budget → pacing → inner LLM; the agent loop is unchanged).
+- `benchmark.py`: `estimate_requests()` / `RequestEstimate` (typical = runs × 5, worst case =
+  Σmax_steps × repeats × max_attempts, rough time); `run_suite(request_budget=, min_requests_to_start=)`;
+  a task is not started if the remaining budget < ~5; circuit breaker on auth / quota_exhausted /
+  budget_exhausted → all remaining runs skipped with the reason, `stop_reason` set, 0 further requests.
+  Temporary errors (server, network, rate limit after retries) do not trip it.
+- `runner.py`: a locally refused request (`NOT_SENT_KINDS`) is not counted in `llm_calls`.
+- `SuiteResult` gained `request_budget`, `estimated_requests`, `stop_reason`; the report shows
+  "Requests: N actual | estimate E | budget B" and "Stopped: …".
+- `scripts/run_benchmark.py --agent gemini`: prints the estimate and exits with zero requests;
+  `--yes` runs it; `--budget N` (default 80); pacing 6 s.
+- `test_report.py`: the incomplete-suite test now expects the circuit breaker (shop-003..010 skipped).
+- **First real full-suite run** (user ran, `gemini-3.5-flash-lite`, 1 repeat): **10/10 passed**
+  (easy 2/2, medium 4/4, hard 4/4). **57 actual requests** (estimate 50, budget 80), avg 5.7 steps,
+  avg 2,608 input / 145 output tokens per run, 35.1 s avg, 351 s total, 47 tool calls, 2 tool errors —
+  both the model calling functions inside `calculator` (`datetime(...)`, `round(...)`), rejected by the
+  safe calculator; the model recovered both times. shop-010 needed 8 of its 8 allowed steps.
+  Saved: `results/shop_gemini-default_20261113T054832046291Z.json`.
+- Interpretation (honest): one run, no repeats → says nothing yet about consistency (pass^k); 10/10
+  suggests the suite may be too easy to separate stronger from weaker configs (ceiling effect).
+  The ~5 requests/task estimate was low (actual 5.7).
+
+**Step 6.2 Scripted agents + comparison + JSON export: ✅ complete.** Tests: **264 passed**
 (user-reported; 16 new).
 - `src/agentbench/suites/shop_agents.py`: scripted `careful` (correct SQL for all 10 tasks) and `sloppy`
   (same scripts except 4 deliberate traps) FakeLLM agents; SQL runs on the real DB. `scripted_config()`,
@@ -192,6 +219,7 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 | Comparison fairness | Config dimensions vs. fairness dimensions (tasks fingerprint, dataset, repeats) | Only one variable may change; otherwise say so |
 | Result export | JSON with full tasks, never overwrite; metrics recomputed on load | Free re-grading; files aren't trusted |
 | Scripted agents | Careful/sloppy FakeLLM scripts, always labelled SCRIPTED | Test the pipeline for ₹0 without faking AI results |
+| Real-run safety | Hard per-request cap + circuit breaker + `--yes` after an estimate | A free quota can never be overspent by accident |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
@@ -208,7 +236,7 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 - [x] **Phase 3** — LLM layer: `LLMClient`, `FakeLLM`, `GeminiClient`
 - [x] **Phase 4** — Agent runner: ReAct-style loop, step limit, error handling, tracing
 - [x] **Phase 5** — Evaluators: exact-match, contains, tool-usage; later LLM-as-judge
-- [ ] **Phase 6** — Benchmark runner: task suites, batch runs, metrics, agent configs + comparison;
+- [x] **Phase 6** — Benchmark runner: task suites, batch runs, metrics, agent configs + comparison;
   more realistic tools (SQL query over sample SQLite DB, date calculator, unit converter, file reader)
 - [ ] **Phase 7** — Storage: SQLite for runs & traces (adds `run_id`)
 - [ ] **Phase 8** — Failure analysis: categorize failures
@@ -220,8 +248,5 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 6, Step 6.3 — free-tier safety for real Gemini suite runs: `RateLimitedLLM` (≥ 6 s between
-requests), request estimate + refusal without `--yes`, request budget (default 80), circuit breaker on
-auth / quota_exhausted (remaining runs skipped, suite incomplete), actual vs. estimated requests in the
-report. Open decision: budget enforced as a hard per-request cap (recommended — worst case 8 × 3 = 24
-per task would let only 3 of 10 tasks start under a worst-case pre-check). Waiting for user approval.
+Phase 7 — SQLite storage for suite runs, records, traces and evaluations (the future dashboard's
+data source). Plan to be presented; waiting for user approval.

@@ -163,7 +163,8 @@ class EvaluationResult(_BaseModel):
 # do not count toward the pass rate. ("invalid_response" = the model returned an unusable
 # reply, and "max_steps" = the agent ran out of steps: both ARE agent results.)
 INFRA_ERROR_KINDS: frozenset[str] = frozenset(
-    {"auth", "quota_exhausted", "rate_limit", "server", "network", "bad_request", "config", "unknown"}
+    {"auth", "quota_exhausted", "rate_limit", "server", "network", "bad_request", "config",
+     "budget_exhausted", "unknown"}
 )
 
 
@@ -246,6 +247,11 @@ class SuiteResult(_BaseModel):
     # expected answer, tolerances, allowed tools, max steps) and which data was used.
     tasks: list[Task] = Field(default_factory=list)
     dataset: str | None = None  # e.g. "shop.db sha256:1a2b3c4d5e6f"
+    # Free-tier safety (Step 6.3): the hard request cap, the estimate shown before the run,
+    # and why the suite stopped early (None = it didn't).
+    request_budget: int | None = Field(default=None, ge=1)
+    estimated_requests: int | None = Field(default=None, ge=0)
+    stop_reason: str | None = None
 
     @model_validator(mode="after")
     def _tasks_match_ids(self) -> "SuiteResult":

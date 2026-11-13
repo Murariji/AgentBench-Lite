@@ -84,3 +84,38 @@ SELF-CHECK
   2. Two runs have different tasks fingerprints. Can you compare them?
   3. Why open the export file with "x" instead of "w"?
   4. Why recompute metrics on load instead of reading them from JSON?
+
+==================================================================
+STEP 6.3 - FREE-TIER SAFETY FOR REAL RUNS
+==================================================================
+RateLimitedLLM(inner, pacer, budget)   <- decorator: looks like any LLMClient
+   1. budget.take()  no requests left -> LLMError("budget_exhausted"), NOT sent
+   2. pacer.wait()   >= 6 s between request STARTS (shared across tasks)
+   3. inner.generate()
+The agent loop did not change: it just sees an LLMClient.
+
+ESTIMATE + CONFIRM
+   typical    = runs x 5
+   worst case = sum(max_steps) x repeats x max_attempts = 10 x 8 x 3 = 240
+   without --yes: print the estimate, exit, ZERO requests
+
+HARD BUDGET (default 80): can never be exceeded
+   before a task: fewer than ~5 left -> don't start it
+   during a task: the cap is hit -> run = "stopped by budget" (infra, not agent)
+
+CIRCUIT BREAKER (like a house fuse)
+   auth / quota_exhausted / budget_exhausted -> stop, skip the rest,
+   0 further requests, suite INCOMPLETE, stop_reason recorded
+   server / network errors -> that run is infra, the suite continues
+
+FIRST REAL RUN (gemini-3.5-flash-lite, 1 repeat)
+   10/10 passed, 57 requests (estimate 50), 351 s, 2 tool errors recovered
+   (model tried datetime(...) and round(...) inside the calculator)
+   Honest reading: 1 repeat says nothing about consistency (pass^k), and
+   10/10 may mean the tasks are too easy to separate configs (ceiling effect).
+
+SELF-CHECK
+  1. Why check the budget BEFORE pacing, not after?
+  2. Why does a server error not trip the circuit breaker?
+  3. Why is a budget-stopped run not counted as an agent failure?
+  4. The model scored 10/10. Name two reasons this is not yet "proof" it's reliable.

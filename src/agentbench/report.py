@@ -69,6 +69,11 @@ def format_report(suite: SuiteResult, metrics: SuiteMetrics | None = None) -> st
         lines.append(f"Status     : INCOMPLETE - {m.infra_errors} infrastructure error(s), "
                      f"{m.skipped_runs} skipped; results below cover {m.eligible_runs} of "
                      f"{m.scheduled_runs} scheduled runs")
+    if suite.stop_reason:
+        lines.append(f"Stopped    : {suite.stop_reason}")
+    if suite.request_budget is not None or suite.estimated_requests is not None:
+        lines.append(f"Requests   : {m.total_llm_calls} actual | estimate {suite.estimated_requests} | "
+                     f"budget {suite.request_budget or 'none'}")
     levels = " | ".join(f"{level} {rate}" for level, rate in m.by_difficulty.items())
     lines += [
         f"Pass rate  : {m.pass_rate}   (passed / eligible runs)",

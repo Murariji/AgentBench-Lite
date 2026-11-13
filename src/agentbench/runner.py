@@ -16,7 +16,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from agentbench.llm.base import LLMClient, LLMError, LLMResponse, Message
+from agentbench.llm.base import NOT_SENT_KINDS, LLMClient, LLMError, LLMResponse, Message
 from agentbench.models import RunResult, RunStatus, Step, Task, ToolCall, Trace
 from agentbench.tools.base import Tool
 from agentbench.tools.registry import ToolRegistry
@@ -142,6 +142,8 @@ class AgentRunner:
             try:
                 return self._llm.generate(messages, tools, self._system_prompt), None, attempt
             except LLMError as error:
+                if error.kind in NOT_SENT_KINDS:  # refused locally: this attempt never reached the API
+                    return None, error, attempt - 1
                 delay = self._retry.delay_for(attempt, error)
                 if delay is None:
                     if error.retryable:  # temporary problem, but we're out of patience

@@ -78,10 +78,12 @@ def test_report_marks_incomplete_suites(db):
         return scripted_agent("careful")(task, repeat)
 
     report = format_report(run(db, make_llm=make_llm))
-    assert "Status     : INCOMPLETE - 1 infrastructure error(s)" in report
-    assert "covers 9 of 10" not in report and "cover 9 of 10 scheduled runs" in report
-    assert "Pass rate  : 9/9 (100.0%)" in report
+    # Step 6.3 circuit breaker: after the quota error, shop-003..010 are skipped (not run)
+    assert "Status     : INCOMPLETE - 1 infrastructure error(s), 8 skipped" in report
+    assert "cover 1 of 10 scheduled runs" in report
+    assert "Pass rate  : 1/1 (100.0%)" in report
     assert "INFRA_ERROR (quota_exhausted: not counted)" in report
+    assert "shop-003   -       SKIPPED     (quota_exhausted in shop-002)" in report
 
 
 def test_real_llm_configs_are_labelled_real(careful):
