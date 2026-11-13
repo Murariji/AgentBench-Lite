@@ -1,0 +1,2282 @@
+[
+ {
+  "suite_id": "2cf16c36de14452bb71b5adfdb68de85",
+  "suite_name": "shop",
+  "config": {
+   "name": "careful-script",
+   "provider": "fake",
+   "model": "scripted-careful-v1",
+   "system_prompt": "You are a careful assistant that solves tasks step by step. Use the provided tools whenever they help, especially for arithmetic. When you know the final answer, reply with the answer only.",
+   "max_attempts": 3,
+   "min_interval_seconds": 0.0,
+   "prompt_hash": "396a9e3fe29c"
+  },
+  "task_ids": [
+   "shop-001",
+   "shop-002",
+   "shop-003",
+   "shop-004",
+   "shop-005",
+   "shop-006",
+   "shop-007",
+   "shop-008",
+   "shop-009",
+   "shop-010"
+  ],
+  "repeats": 1,
+  "started_at": "2026-11-13T07:00:31.760846Z",
+  "finished_at": "2026-11-13T07:00:31.767877Z",
+  "records": [
+   {
+    "task_id": "shop-001",
+    "repeat": 0,
+    "difficulty": "easy",
+    "run": {
+     "run_id": "3c84c7ddb42145f48fb650a2291bdec6",
+     "task_id": "shop-001",
+     "status": "completed",
+     "final_answer": "30",
+     "trace": {
+      "task_id": "shop-001",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT COUNT(*) FROM customers"
+         },
+         "output": "COUNT(*)\n30\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.760846Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "30",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.760846Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0004150000004301546,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "3c84c7ddb42145f48fb650a2291bdec6",
+     "task_id": "shop-001",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": true,
+       "reason": "found 30 (the only number); matches expected 30"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-002",
+    "repeat": 0,
+    "difficulty": "easy",
+    "run": {
+     "run_id": "d9ab1686202a4322a2eedc287f45882d",
+     "task_id": "shop-002",
+     "status": "completed",
+     "final_answer": "June",
+     "trace": {
+      "task_id": "shop-002",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT strftime('%m', order_date) AS m, COUNT(*) AS n FROM orders GROUP BY m ORDER BY n DESC LIMIT 1"
+         },
+         "output": "m | n\n06 | 30\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.761904Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "June",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.761904Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0006326000002445653,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "d9ab1686202a4322a2eedc287f45882d",
+     "task_id": "shop-002",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": true,
+       "reason": "'June' contains 'June'"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-003",
+    "repeat": 0,
+    "difficulty": "medium",
+    "run": {
+     "run_id": "abe6f7f2bd14450a92a684156bcc18dc",
+     "task_id": "shop-003",
+     "status": "completed",
+     "final_answer": "3",
+     "trace": {
+      "task_id": "shop-003",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT COUNT(*) FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL"
+         },
+         "output": "COUNT(*)\n3\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.761904Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "3",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.761904Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.000505199999679462,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "abe6f7f2bd14450a92a684156bcc18dc",
+     "task_id": "shop-003",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": true,
+       "reason": "found 3 (the only number); matches expected 3"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-004",
+    "repeat": 0,
+    "difficulty": "medium",
+    "run": {
+     "run_id": "863c7a925a4a43eab9e12103df403b00",
+     "task_id": "shop-004",
+     "status": "completed",
+     "final_answer": "Noise-Cancelling Headphones",
+     "trace": {
+      "task_id": "shop-004",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT p.name, p.price FROM products p WHERE p.id IN (SELECT product_id FROM order_items) ORDER BY p.price DESC LIMIT 1"
+         },
+         "output": "name | price\nNoise-Cancelling Headphones | 8999\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.763598Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "Noise-Cancelling Headphones",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.763598Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0005865000002813758,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "863c7a925a4a43eab9e12103df403b00",
+     "task_id": "shop-004",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": true,
+       "reason": "'Noise-Cancelling Headphones' contains 'Noise-Cancelling Headphones'"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-005",
+    "repeat": 0,
+    "difficulty": "medium",
+    "run": {
+     "run_id": "3cabb601934e40cc96a52a5a4d2b20eb",
+     "task_id": "shop-005",
+     "status": "completed",
+     "final_answer": "Jaipur",
+     "trace": {
+      "task_id": "shop-005",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT c.city, COUNT(*) AS n FROM orders o JOIN customers c ON c.id = o.customer_id GROUP BY c.city ORDER BY n DESC LIMIT 1"
+         },
+         "output": "city | n\nJaipur | 38\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.763598Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "Jaipur",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.763598Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0009143000006588409,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "3cabb601934e40cc96a52a5a4d2b20eb",
+     "task_id": "shop-005",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": true,
+       "reason": "'Jaipur' contains 'Jaipur'"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-006",
+    "repeat": 0,
+    "difficulty": "medium",
+    "run": {
+     "run_id": "2be607467c1b4e1eaba5b02d9538880a",
+     "task_id": "shop-006",
+     "status": "completed",
+     "final_answer": "268721",
+     "trace": {
+      "task_id": "shop-006",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT SUM(i.quantity * p.price) FROM order_items i JOIN products p ON p.id = i.product_id JOIN orders o ON o.id = i.order_id WHERE o.order_date LIKE '2026-01-%'"
+         },
+         "output": "SUM(i.quantity * p.price)\n268721\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.765273Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "268721",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.765273Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0012325000006967457,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "2be607467c1b4e1eaba5b02d9538880a",
+     "task_id": "shop-006",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": true,
+       "reason": "found 268721 (the only number); matches expected 268721"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-007",
+    "repeat": 0,
+    "difficulty": "hard",
+    "run": {
+     "run_id": "f661e418cc8f439e8470474cd30b4a4a",
+     "task_id": "shop-007",
+     "status": "completed",
+     "final_answer": "Noise-Cancelling Headphones",
+     "trace": {
+      "task_id": "shop-007",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT p.name, SUM(i.quantity * p.price) AS revenue FROM order_items i JOIN products p ON p.id = i.product_id GROUP BY p.id ORDER BY revenue DESC LIMIT 1"
+         },
+         "output": "name | revenue\nNoise-Cancelling Headphones | 935896\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "Noise-Cancelling Headphones",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0012550999999803025,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "f661e418cc8f439e8470474cd30b4a4a",
+     "task_id": "shop-007",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": true,
+       "reason": "'Noise-Cancelling Headphones' contains 'Noise-Cancelling Headphones'"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-008",
+    "repeat": 0,
+    "difficulty": "hard",
+    "run": {
+     "run_id": "385e97c8315e4da0b6a8e8e484e6c77b",
+     "task_id": "shop-008",
+     "status": "completed",
+     "final_answer": "Ananya Iyer",
+     "trace": {
+      "task_id": "shop-008",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT c.name, SUM(i.quantity * p.price) AS spent FROM order_items i JOIN products p ON p.id = i.product_id JOIN orders o ON o.id = i.order_id JOIN customers c ON c.id = o.customer_id GROUP BY c.id ORDER BY spent DESC LIMIT 1"
+         },
+         "output": "name | spent\nAnanya Iyer | 206335\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "Ananya Iyer",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0011116999994555954,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "385e97c8315e4da0b6a8e8e484e6c77b",
+     "task_id": "shop-008",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": true,
+       "reason": "'Ananya Iyer' contains 'Ananya Iyer'"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-009",
+    "repeat": 0,
+    "difficulty": "hard",
+    "run": {
+     "run_id": "744708749fcf4747b3069a802441c22f",
+     "task_id": "shop-009",
+     "status": "completed",
+     "final_answer": "23.8",
+     "trace": {
+      "task_id": "shop-009",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT strftime('%m', order_date) AS m, COUNT(*) FROM orders WHERE m IN ('01', '02') GROUP BY m"
+         },
+         "output": "m | COUNT(*)\n01 | 21\n02 | 26\n(2 rows)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "calculator",
+         "arguments": {
+          "expression": "(26 - 21) / 21 * 100"
+         },
+         "output": "23.809523809523807",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 2,
+        "llm_output": "23.8",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0009129999998549465,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 3
+    },
+    "evaluation": {
+     "run_id": "744708749fcf4747b3069a802441c22f",
+     "task_id": "shop-009",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": true,
+       "reason": "found 23.8 (the only number); matches expected 23.8"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-010",
+    "repeat": 0,
+    "difficulty": "hard",
+    "run": {
+     "run_id": "5d8de7db04d742e89010fd8c2cbe792d",
+     "task_id": "shop-010",
+     "status": "completed",
+     "final_answer": "16107",
+     "trace": {
+      "task_id": "shop-010",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT SUM(i.quantity * p.price) FROM order_items i JOIN products p ON p.id = i.product_id"
+         },
+         "output": "SUM(i.quantity * p.price)\n2416098\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT COUNT(*) FROM orders"
+         },
+         "output": "COUNT(*)\n150\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 2,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "calculator",
+         "arguments": {
+          "expression": "2416098 / 150"
+         },
+         "output": "16107.32",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 3,
+        "llm_output": "16107",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0008835999997245381,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 4
+    },
+    "evaluation": {
+     "run_id": "5d8de7db04d742e89010fd8c2cbe792d",
+     "task_id": "shop-010",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": true,
+       "reason": "found 16107 (the only number); matches expected 16107"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (2 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   }
+  ],
+  "skipped": [],
+  "tasks": [
+   {
+    "id": "shop-001",
+    "prompt": "How many customers are there? Answer with the number only.",
+    "expected_answer": "30",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "easy",
+    "answer_type": "number",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-002",
+    "prompt": "Which month of 2026 had the most orders? Answer with the month name only.",
+    "expected_answer": "June",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "easy",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-003",
+    "prompt": "How many customers have never placed an order? Answer with the number only.",
+    "expected_answer": "3",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "number",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-004",
+    "prompt": "Name the most expensive product that has been ordered at least once. Answer with the exact name only, as stored in the database.",
+    "expected_answer": "Noise-Cancelling Headphones",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-005",
+    "prompt": "Which city's customers placed the most orders? Answer with the city name only.",
+    "expected_answer": "Jaipur",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-006",
+    "prompt": "What was the total revenue, in rupees, from orders placed in January 2026? Revenue means quantity x product price. Answer with the number only.",
+    "expected_answer": "268721",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "number",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-007",
+    "prompt": "Which product earned the most total revenue? Revenue means quantity x product price. Answer with the exact name only, as stored in the database.",
+    "expected_answer": "Noise-Cancelling Headphones",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-008",
+    "prompt": "Which customer spent the most in total? Revenue means quantity x product price. Answer with the exact name only, as stored in the database.",
+    "expected_answer": "Ananya Iyer",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-009",
+    "prompt": "What was the percentage growth in the number of orders from January 2026 to February 2026? Answer with the percentage to one decimal place, number only.",
+    "expected_answer": "23.8",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "number",
+    "abs_tolerance": 0.05,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-010",
+    "prompt": "What was the average order value across all orders, in rupees, rounded to the nearest rupee? Revenue means quantity x product price. Answer with the number only.",
+    "expected_answer": "16107",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "number",
+    "abs_tolerance": 1.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   }
+  ],
+  "dataset": "shop.db sha256:fixture",
+  "request_budget": null,
+  "estimated_requests": null,
+  "stop_reason": null
+ },
+ {
+  "suite_id": "624fcdafc5794f0f997dc9b2747a2255",
+  "suite_name": "shop",
+  "config": {
+   "name": "sloppy-script",
+   "provider": "fake",
+   "model": "scripted-sloppy-v1",
+   "system_prompt": "You are a careful assistant that solves tasks step by step. Use the provided tools whenever they help, especially for arithmetic. When you know the final answer, reply with the answer only.",
+   "max_attempts": 3,
+   "min_interval_seconds": 0.0,
+   "prompt_hash": "396a9e3fe29c"
+  },
+  "task_ids": [
+   "shop-001",
+   "shop-002",
+   "shop-003",
+   "shop-004",
+   "shop-005",
+   "shop-006",
+   "shop-007",
+   "shop-008",
+   "shop-009",
+   "shop-010"
+  ],
+  "repeats": 1,
+  "started_at": "2026-11-13T07:00:31.767877Z",
+  "finished_at": "2026-11-13T07:00:31.778811Z",
+  "records": [
+   {
+    "task_id": "shop-001",
+    "repeat": 0,
+    "difficulty": "easy",
+    "run": {
+     "run_id": "225c8981a50244bb95dbee063935e4b0",
+     "task_id": "shop-001",
+     "status": "completed",
+     "final_answer": "30",
+     "trace": {
+      "task_id": "shop-001",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT COUNT(*) FROM customers"
+         },
+         "output": "COUNT(*)\n30\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "30",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.767877Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0003952000006393064,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "225c8981a50244bb95dbee063935e4b0",
+     "task_id": "shop-001",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": true,
+       "reason": "found 30 (the only number); matches expected 30"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-002",
+    "repeat": 0,
+    "difficulty": "easy",
+    "run": {
+     "run_id": "148aae1ae20640bf9f5aefd63e3f7d4e",
+     "task_id": "shop-002",
+     "status": "completed",
+     "final_answer": "June",
+     "trace": {
+      "task_id": "shop-002",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT strftime('%m', order_date) AS m, COUNT(*) AS n FROM orders GROUP BY m ORDER BY n DESC LIMIT 1"
+         },
+         "output": "m | n\n06 | 30\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "June",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0005326000009517884,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "148aae1ae20640bf9f5aefd63e3f7d4e",
+     "task_id": "shop-002",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": true,
+       "reason": "'June' contains 'June'"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-003",
+    "repeat": 0,
+    "difficulty": "medium",
+    "run": {
+     "run_id": "d805a0bddd8d4fa9aa448f552abd6ef2",
+     "task_id": "shop-003",
+     "status": "completed",
+     "final_answer": "0",
+     "trace": {
+      "task_id": "shop-003",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT COUNT(*) FROM customers c JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL"
+         },
+         "output": "COUNT(*)\n0\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "0",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.00041199999941454735,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "d805a0bddd8d4fa9aa448f552abd6ef2",
+     "task_id": "shop-003",
+     "passed": false,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": false,
+       "reason": "found 0 (the only number); expected 3 (difference 3 > allowed 0)"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "failed"
+   },
+   {
+    "task_id": "shop-004",
+    "repeat": 0,
+    "difficulty": "medium",
+    "run": {
+     "run_id": "ca6448e2772341caae32c07358056f81",
+     "task_id": "shop-004",
+     "status": "completed",
+     "final_answer": "Smart Watch",
+     "trace": {
+      "task_id": "shop-004",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT name, price FROM products ORDER BY price DESC LIMIT 1"
+         },
+         "output": "name | price\nSmart Watch | 12999\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "Smart Watch",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0005811999999423278,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "ca6448e2772341caae32c07358056f81",
+     "task_id": "shop-004",
+     "passed": false,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": false,
+       "reason": "'Smart Watch' does not contain 'Noise-Cancelling Headphones' as whole words"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "failed"
+   },
+   {
+    "task_id": "shop-005",
+    "repeat": 0,
+    "difficulty": "medium",
+    "run": {
+     "run_id": "06410cd86d8e45ab835a4c4fe954e059",
+     "task_id": "shop-005",
+     "status": "completed",
+     "final_answer": "Jaipur",
+     "trace": {
+      "task_id": "shop-005",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT c.city, COUNT(*) AS n FROM orders o JOIN customers c ON c.id = o.customer_id GROUP BY c.city ORDER BY n DESC LIMIT 1"
+         },
+         "output": "city | n\nJaipur | 38\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "Jaipur",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.00038719999975000974,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "06410cd86d8e45ab835a4c4fe954e059",
+     "task_id": "shop-005",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": true,
+       "reason": "'Jaipur' contains 'Jaipur'"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-006",
+    "repeat": 0,
+    "difficulty": "medium",
+    "run": {
+     "run_id": "f2afad4be8a14acea8695a5ce3bb0c3b",
+     "task_id": "shop-006",
+     "status": "completed",
+     "final_answer": "268721",
+     "trace": {
+      "task_id": "shop-006",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT SUM(i.quantity * p.price) FROM order_items i JOIN products p ON p.id = i.product_id JOIN orders o ON o.id = i.order_id WHERE o.order_date LIKE '2026-01-%'"
+         },
+         "output": "SUM(i.quantity * p.price)\n268721\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "268721",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.00038409999979194254,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "f2afad4be8a14acea8695a5ce3bb0c3b",
+     "task_id": "shop-006",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": true,
+       "reason": "found 268721 (the only number); matches expected 268721"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-007",
+    "repeat": 0,
+    "difficulty": "hard",
+    "run": {
+     "run_id": "9d36678fb6bc473d8ed0bba80b0d4f58",
+     "task_id": "shop-007",
+     "status": "completed",
+     "final_answer": "Denim Jeans",
+     "trace": {
+      "task_id": "shop-007",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT p.name, SUM(i.quantity) AS units FROM order_items i JOIN products p ON p.id = i.product_id GROUP BY p.id ORDER BY units DESC LIMIT 1"
+         },
+         "output": "name | units\nDenim Jeans | 118\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "Denim Jeans",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.00065080000058515,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "9d36678fb6bc473d8ed0bba80b0d4f58",
+     "task_id": "shop-007",
+     "passed": false,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": false,
+       "reason": "'Denim Jeans' does not contain 'Noise-Cancelling Headphones' as whole words"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "failed"
+   },
+   {
+    "task_id": "shop-008",
+    "repeat": 0,
+    "difficulty": "hard",
+    "run": {
+     "run_id": "dc7677460fe84a1580fbc16746178632",
+     "task_id": "shop-008",
+     "status": "completed",
+     "final_answer": "Ananya Iyer",
+     "trace": {
+      "task_id": "shop-008",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT c.name, SUM(i.quantity * p.price) AS spent FROM order_items i JOIN products p ON p.id = i.product_id JOIN orders o ON o.id = i.order_id JOIN customers c ON c.id = o.customer_id GROUP BY c.id ORDER BY spent DESC LIMIT 1"
+         },
+         "output": "name | spent\nAnanya Iyer | 206335\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "Ananya Iyer",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0006539000005432172,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "dc7677460fe84a1580fbc16746178632",
+     "task_id": "shop-008",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": true,
+       "reason": "'Ananya Iyer' contains 'Ananya Iyer'"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-009",
+    "repeat": 0,
+    "difficulty": "hard",
+    "run": {
+     "run_id": "3a4493eb32fd480aacc6ee684716438c",
+     "task_id": "shop-009",
+     "status": "completed",
+     "final_answer": "-19.2",
+     "trace": {
+      "task_id": "shop-009",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT strftime('%m', order_date) AS m, COUNT(*) FROM orders WHERE m IN ('01', '02') GROUP BY m"
+         },
+         "output": "m | COUNT(*)\n01 | 21\n02 | 26\n(2 rows)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "calculator",
+         "arguments": {
+          "expression": "(21 - 26) / 26 * 100"
+         },
+         "output": "-19.230769230769234",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 2,
+        "llm_output": "-19.2",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.773468Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0005102999984956114,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 3
+    },
+    "evaluation": {
+     "run_id": "3a4493eb32fd480aacc6ee684716438c",
+     "task_id": "shop-009",
+     "passed": false,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": false,
+       "reason": "found -19.2 (the only number); expected 23.8 (difference 43 > allowed 0.05)"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "failed"
+   },
+   {
+    "task_id": "shop-010",
+    "repeat": 0,
+    "difficulty": "hard",
+    "run": {
+     "run_id": "7b93fa97e84b4bfd9f60bb379c155612",
+     "task_id": "shop-010",
+     "status": "completed",
+     "final_answer": "16107",
+     "trace": {
+      "task_id": "shop-010",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT SUM(i.quantity * p.price) FROM order_items i JOIN products p ON p.id = i.product_id"
+         },
+         "output": "SUM(i.quantity * p.price)\n2416098\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.778811Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT COUNT(*) FROM orders"
+         },
+         "output": "COUNT(*)\n150\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.778811Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 2,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "calculator",
+         "arguments": {
+          "expression": "2416098 / 150"
+         },
+         "output": "16107.32",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.778811Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 3,
+        "llm_output": "16107",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.778811Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0006511999999929685,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 4
+    },
+    "evaluation": {
+     "run_id": "7b93fa97e84b4bfd9f60bb379c155612",
+     "task_id": "shop-010",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": true,
+       "reason": "found 16107 (the only number); matches expected 16107"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (2 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   }
+  ],
+  "skipped": [],
+  "tasks": [
+   {
+    "id": "shop-001",
+    "prompt": "How many customers are there? Answer with the number only.",
+    "expected_answer": "30",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "easy",
+    "answer_type": "number",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-002",
+    "prompt": "Which month of 2026 had the most orders? Answer with the month name only.",
+    "expected_answer": "June",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "easy",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-003",
+    "prompt": "How many customers have never placed an order? Answer with the number only.",
+    "expected_answer": "3",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "number",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-004",
+    "prompt": "Name the most expensive product that has been ordered at least once. Answer with the exact name only, as stored in the database.",
+    "expected_answer": "Noise-Cancelling Headphones",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-005",
+    "prompt": "Which city's customers placed the most orders? Answer with the city name only.",
+    "expected_answer": "Jaipur",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-006",
+    "prompt": "What was the total revenue, in rupees, from orders placed in January 2026? Revenue means quantity x product price. Answer with the number only.",
+    "expected_answer": "268721",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "number",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-007",
+    "prompt": "Which product earned the most total revenue? Revenue means quantity x product price. Answer with the exact name only, as stored in the database.",
+    "expected_answer": "Noise-Cancelling Headphones",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-008",
+    "prompt": "Which customer spent the most in total? Revenue means quantity x product price. Answer with the exact name only, as stored in the database.",
+    "expected_answer": "Ananya Iyer",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-009",
+    "prompt": "What was the percentage growth in the number of orders from January 2026 to February 2026? Answer with the percentage to one decimal place, number only.",
+    "expected_answer": "23.8",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "number",
+    "abs_tolerance": 0.05,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-010",
+    "prompt": "What was the average order value across all orders, in rupees, rounded to the nearest rupee? Revenue means quantity x product price. Answer with the number only.",
+    "expected_answer": "16107",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "number",
+    "abs_tolerance": 1.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   }
+  ],
+  "dataset": "shop.db sha256:fixture",
+  "request_budget": null,
+  "estimated_requests": null,
+  "stop_reason": null
+ },
+ {
+  "suite_id": "18fbd8d9822342b098f577712791a459",
+  "suite_name": "shop",
+  "config": {
+   "name": "gemini-default",
+   "provider": "gemini",
+   "model": "gemini-fixture",
+   "system_prompt": "fixture prompt",
+   "max_attempts": 3,
+   "min_interval_seconds": 6.0,
+   "prompt_hash": "194713ad972b"
+  },
+  "task_ids": [
+   "shop-001",
+   "shop-002",
+   "shop-003",
+   "shop-004",
+   "shop-005",
+   "shop-006",
+   "shop-007",
+   "shop-008",
+   "shop-009",
+   "shop-010"
+  ],
+  "repeats": 1,
+  "started_at": "2026-11-13T07:00:31.778811Z",
+  "finished_at": "2026-11-13T07:00:31.780531Z",
+  "records": [
+   {
+    "task_id": "shop-001",
+    "repeat": 0,
+    "difficulty": "easy",
+    "run": {
+     "run_id": "00bbfb9809f14385b7e9c4091bdb9fe4",
+     "task_id": "shop-001",
+     "status": "completed",
+     "final_answer": "30",
+     "trace": {
+      "task_id": "shop-001",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT COUNT(*) FROM customers"
+         },
+         "output": "COUNT(*)\n30\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.778811Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "30",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.778811Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0002644000014697667,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "00bbfb9809f14385b7e9c4091bdb9fe4",
+     "task_id": "shop-001",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:number",
+       "passed": true,
+       "reason": "found 30 (the only number); matches expected 30"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-002",
+    "repeat": 0,
+    "difficulty": "easy",
+    "run": {
+     "run_id": "0dd6c842e79141fb853f5989ca8306ee",
+     "task_id": "shop-002",
+     "status": "completed",
+     "final_answer": "June",
+     "trace": {
+      "task_id": "shop-002",
+      "steps": [
+       {
+        "index": 0,
+        "llm_output": "",
+        "tool_call": {
+         "tool_name": "sql_query",
+         "arguments": {
+          "query": "SELECT strftime('%m', order_date) AS m, COUNT(*) AS n FROM orders GROUP BY m ORDER BY n DESC LIMIT 1"
+         },
+         "output": "m | n\n06 | 30\n(1 row)",
+         "error": null
+        },
+        "timestamp": "2026-11-13T07:00:31.778811Z",
+        "input_tokens": null,
+        "output_tokens": null
+       },
+       {
+        "index": 1,
+        "llm_output": "June",
+        "tool_call": null,
+        "timestamp": "2026-11-13T07:00:31.778811Z",
+        "input_tokens": null,
+        "output_tokens": null
+       }
+      ]
+     },
+     "duration_seconds": 0.0004518999994616024,
+     "error": null,
+     "error_kind": null,
+     "llm_calls": 2
+    },
+    "evaluation": {
+     "run_id": "0dd6c842e79141fb853f5989ca8306ee",
+     "task_id": "shop-002",
+     "passed": true,
+     "checks": [
+      {
+       "name": "status",
+       "passed": true,
+       "reason": "run completed"
+      },
+      {
+       "name": "answer:contains",
+       "passed": true,
+       "reason": "'June' contains 'June'"
+      },
+      {
+       "name": "required_tools",
+       "passed": true,
+       "reason": "used: sql_query (1 successful call(s))"
+      }
+     ]
+    },
+    "outcome": "passed"
+   },
+   {
+    "task_id": "shop-003",
+    "repeat": 0,
+    "difficulty": "medium",
+    "run": {
+     "run_id": "20a3c7d3f05b42998c6a57626fd8973d",
+     "task_id": "shop-003",
+     "status": "error",
+     "final_answer": null,
+     "trace": {
+      "task_id": "shop-003",
+      "steps": []
+     },
+     "duration_seconds": 3.300000025774352e-05,
+     "error": "daily quota",
+     "error_kind": "quota_exhausted",
+     "llm_calls": 1
+    },
+    "evaluation": null,
+    "outcome": "infra_error"
+   }
+  ],
+  "skipped": [
+   {
+    "task_id": "shop-004",
+    "repeat": 0,
+    "reason": "quota_exhausted in shop-003"
+   },
+   {
+    "task_id": "shop-005",
+    "repeat": 0,
+    "reason": "quota_exhausted in shop-003"
+   },
+   {
+    "task_id": "shop-006",
+    "repeat": 0,
+    "reason": "quota_exhausted in shop-003"
+   },
+   {
+    "task_id": "shop-007",
+    "repeat": 0,
+    "reason": "quota_exhausted in shop-003"
+   },
+   {
+    "task_id": "shop-008",
+    "repeat": 0,
+    "reason": "quota_exhausted in shop-003"
+   },
+   {
+    "task_id": "shop-009",
+    "repeat": 0,
+    "reason": "quota_exhausted in shop-003"
+   },
+   {
+    "task_id": "shop-010",
+    "repeat": 0,
+    "reason": "quota_exhausted in shop-003"
+   }
+  ],
+  "tasks": [
+   {
+    "id": "shop-001",
+    "prompt": "How many customers are there? Answer with the number only.",
+    "expected_answer": "30",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "easy",
+    "answer_type": "number",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-002",
+    "prompt": "Which month of 2026 had the most orders? Answer with the month name only.",
+    "expected_answer": "June",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "easy",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-003",
+    "prompt": "How many customers have never placed an order? Answer with the number only.",
+    "expected_answer": "3",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "number",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-004",
+    "prompt": "Name the most expensive product that has been ordered at least once. Answer with the exact name only, as stored in the database.",
+    "expected_answer": "Noise-Cancelling Headphones",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-005",
+    "prompt": "Which city's customers placed the most orders? Answer with the city name only.",
+    "expected_answer": "Jaipur",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-006",
+    "prompt": "What was the total revenue, in rupees, from orders placed in January 2026? Revenue means quantity x product price. Answer with the number only.",
+    "expected_answer": "268721",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "medium",
+    "answer_type": "number",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-007",
+    "prompt": "Which product earned the most total revenue? Revenue means quantity x product price. Answer with the exact name only, as stored in the database.",
+    "expected_answer": "Noise-Cancelling Headphones",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-008",
+    "prompt": "Which customer spent the most in total? Revenue means quantity x product price. Answer with the exact name only, as stored in the database.",
+    "expected_answer": "Ananya Iyer",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "contains",
+    "abs_tolerance": 0.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-009",
+    "prompt": "What was the percentage growth in the number of orders from January 2026 to February 2026? Answer with the percentage to one decimal place, number only.",
+    "expected_answer": "23.8",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "number",
+    "abs_tolerance": 0.05,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   },
+   {
+    "id": "shop-010",
+    "prompt": "What was the average order value across all orders, in rupees, rounded to the nearest rupee? Revenue means quantity x product price. Answer with the number only.",
+    "expected_answer": "16107",
+    "allowed_tools": [
+     "list_tables",
+     "describe_table",
+     "sql_query",
+     "calculator"
+    ],
+    "max_steps": 8,
+    "difficulty": "hard",
+    "answer_type": "number",
+    "abs_tolerance": 1.0,
+    "rel_tolerance": 0.0,
+    "required_tools": [
+     "sql_query"
+    ]
+   }
+  ],
+  "dataset": "shop.db sha256:fixture",
+  "request_budget": 80,
+  "estimated_requests": 50,
+  "stop_reason": "quota_exhausted in shop-003"
+ }
+]

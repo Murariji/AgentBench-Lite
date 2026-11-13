@@ -17,7 +17,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from agentbench.llm.base import NOT_SENT_KINDS, LLMClient, LLMError, LLMResponse, Message
-from agentbench.models import RunResult, RunStatus, Step, Task, ToolCall, Trace
+from agentbench.models import RetryEvent, RunResult, RunStatus, Step, Task, ToolCall, Trace, _utc_now
 from agentbench.tools.base import Tool
 from agentbench.tools.registry import ToolRegistry
 
@@ -80,6 +80,7 @@ class AgentRunner:
         start = self._clock()
         steps: list[Step] = []
         llm_calls = 0
+        retries: list[RetryEvent] = []  # recorded from now on: [] means "none happened"
 
         def finish(status: RunStatus, *, answer: str | None = None,
                    error: str | None = None, kind: str | None = None) -> RunResult:
@@ -92,6 +93,7 @@ class AgentRunner:
                 error=error,
                 error_kind=kind,
                 llm_calls=llm_calls,
+                retries=retries,
             )
 
         tools, problem = self._tools_for(task)
@@ -100,8 +102,9 @@ class AgentRunner:
 
         messages = [Message(role="user", text=task.prompt)]
         for index in range(task.max_steps):
-            response, error, attempts = self._generate(messages, tools)
+            response, error, attempts, events = self._generate(messages, tools, index)
             llm_calls += attempts
+            retries.extend(events)
             if error is not None:
                 return finish("error", error=str(error), kind=error.kind)
 
@@ -133,27 +136,40 @@ class AgentRunner:
         return [self._registry.get(n) for n in names], None
 
     def _generate(
-        self, messages: list[Message], tools: list[Tool]
-    ) -> tuple[LLMResponse | None, LLMError | None, int]:
-        """One LLM call with bounded retries -> (response, error, attempts used)."""
+        self, messages: list[Message], tools: list[Tool], step_index: int
+    ) -> tuple[LLMResponse | None, LLMError | None, int, list[RetryEvent]]:
+        """One LLM call with bounded retries -> (response, error, attempts used, retry events).
+
+        Every failed attempt that is followed by a wait and another try becomes a RetryEvent.
+        Once the call is over, all its events get ``succeeded`` = did the call finally work.
+        """
         attempt = 0
+        failed: list[dict] = []  # retried attempts of THIS call; finished into RetryEvents below
+
+        def done(response, error, used) -> tuple:
+            events = [RetryEvent(**f, succeeded=response is not None) for f in failed]
+            return response, error, used, events
+
         while True:  # ends: success, non-retryable error, or attempt limit (see delay_for)
             attempt += 1
             try:
-                return self._llm.generate(messages, tools, self._system_prompt), None, attempt
+                return done(self._llm.generate(messages, tools, self._system_prompt), None, attempt)
             except LLMError as error:
                 if error.kind in NOT_SENT_KINDS:  # refused locally: this attempt never reached the API
-                    return None, error, attempt - 1
+                    return done(None, error, attempt - 1)
                 delay = self._retry.delay_for(attempt, error)
                 if delay is None:
                     if error.retryable:  # temporary problem, but we're out of patience
                         error = LLMError(f"{error} (gave up after {attempt} attempt(s))",
                                          kind=error.kind, status_code=error.status_code,
-                                         retry_after=error.retry_after)
-                    return None, error, attempt
+                                         retry_after=error.retry_after, request_id=error.request_id)
+                    return done(None, error, attempt)
+                failed.append(dict(step_index=step_index, attempt=attempt, error_kind=error.kind,
+                                   status_code=error.status_code, waited_seconds=delay,
+                                   request_id=error.request_id, occurred_at=_utc_now()))
                 self._sleep(delay)
             except Exception as exc:  # a bug inside an LLM client: report, never crash
-                return None, LLMError(f"{type(exc).__name__}: {exc}", kind="unknown"), attempt
+                return done(None, LLMError(f"{type(exc).__name__}: {exc}", kind="unknown"), attempt)
 
     def _run_tool(self, task: Task, response: LLMResponse) -> ToolCall:
         request = response.tool_request

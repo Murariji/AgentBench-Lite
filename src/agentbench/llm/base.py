@@ -49,11 +49,13 @@ class LLMError(Exception):
         kind: LLMErrorKind = "unknown",
         status_code: int | None = None,
         retry_after: float | None = None,
+        request_id: str | None = None,
     ) -> None:
         super().__init__(message)
         self.kind = kind
         self.status_code = status_code  # e.g. 429, 401, 503 (None if not an HTTP error)
         self.retry_after = retry_after  # seconds the provider asked us to wait, if it said
+        self.request_id = request_id    # provider's request id, when it gives one (often None)
 
     @property
     def retryable(self) -> bool:

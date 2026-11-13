@@ -9,6 +9,7 @@ Tables (one-to-many, top to bottom):
     suite_runs ─┬─< suite_tasks >── task_versions   (immutable task snapshots, by content hash)
                 ├─< run_records ─┬─< steps          (the trace; tool call columns are optional)
                 │                └─< checks         (the evaluation; none for infra errors)
+                │                └─< retries        (retried LLM requests; schema v2)
                 └─< skipped_runs                    (runs that never happened, with the reason)
 
 Rules: foreign keys ON for every connection, every value passed as a "?" parameter (never put
@@ -26,13 +27,14 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from agentbench.metrics import Rate
-from agentbench.models import (AgentConfig, Check, EvaluationResult, RunRecord, RunResult,
+from agentbench.models import (AgentConfig, Check, EvaluationResult, RetryEvent, RunRecord, RunResult,
                                SkippedRun, Step, SuiteResult, Task, ToolCall, Trace)
 from agentbench.report import RESULTS_DIR, export_json
 
 DEFAULT_RESULTS_DB = Path("data") / "results.db"  # git-ignored (*.db)
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
+# Version 1 (Phase 7). Never edit it: databases in the wild were created with it.
 SCHEMA = """
 CREATE TABLE suite_runs (
     suite_id             TEXT PRIMARY KEY,
@@ -131,7 +133,32 @@ CREATE TABLE skipped_runs (
 );
 """
 
-TABLES = ("suite_runs", "task_versions", "suite_tasks", "run_records", "steps", "checks", "skipped_runs")
+# Each migration upgrades version N to N+1. A NEW database also runs them, starting from SCHEMA
+# (version 1): one path for everyone, so fresh and upgraded databases are always identical.
+MIGRATIONS: dict[int, str] = {
+    1: """
+    -- Phase 8: record retried LLM requests.
+    -- 0 for every EXISTING run: those runs never captured retries (unknown, NOT zero).
+    ALTER TABLE run_records ADD COLUMN retries_recorded INTEGER NOT NULL DEFAULT 0
+        CHECK (retries_recorded IN (0, 1));
+    CREATE TABLE retries (
+        run_id         TEXT NOT NULL REFERENCES run_records (run_id),
+        position       INTEGER NOT NULL,
+        step_index     INTEGER NOT NULL CHECK (step_index >= 0),
+        attempt        INTEGER NOT NULL CHECK (attempt >= 1),
+        error_kind     TEXT NOT NULL,
+        status_code    INTEGER,
+        waited_seconds REAL NOT NULL CHECK (waited_seconds >= 0),
+        request_id     TEXT,
+        occurred_at    TEXT NOT NULL,
+        succeeded      INTEGER NOT NULL CHECK (succeeded IN (0, 1)),
+        PRIMARY KEY (run_id, position)
+    );
+    """,
+}
+
+TABLES = ("suite_runs", "task_versions", "suite_tasks", "run_records", "steps", "checks", "skipped_runs",
+          "retries")
 
 
 class StorageError(Exception):
@@ -248,15 +275,27 @@ class ResultStore:
         version = self._conn.execute("PRAGMA user_version").fetchone()[0]
         if version == SCHEMA_VERSION:
             return
-        if version != 0:
-            raise SchemaVersionError(f"results database has schema version {version}; "
-                                     f"this code understands version {SCHEMA_VERSION}")
-        if self._conn.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()[0]:
+        if version > SCHEMA_VERSION:
+            raise SchemaVersionError(f"results database has schema version {version}; this code "
+                                     f"understands up to version {SCHEMA_VERSION} (update AgentBench?)")
+        if version == 0 and self._conn.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()[0]:
             raise SchemaVersionError("this file already contains tables but no AgentBench schema "
                                      "version - refusing to use it as a results database")
-        # A brand-new file: create everything AND set the version in ONE transaction.
-        # (PRAGMA cannot take "?" parameters; SCHEMA_VERSION is a constant from our code.)
-        self._conn.executescript(f"BEGIN;\n{SCHEMA}\nPRAGMA user_version = {SCHEMA_VERSION};\nCOMMIT;")
+        if version != 0 and version not in MIGRATIONS:
+            raise SchemaVersionError(f"no migration from schema version {version}")
+        # ONE transaction: create (if new) + every migration + the new version number.
+        # If any statement fails, ROLLBACK leaves the file exactly as it was (old version, old data).
+        # (PRAGMA cannot take "?" parameters; the versions are integers from our own code.)
+        script = [SCHEMA] if version == 0 else []
+        script += [MIGRATIONS[v] for v in range(max(version, 1), SCHEMA_VERSION)]
+        try:
+            self._conn.executescript("BEGIN;\n" + "\n".join(script)
+                                     + f"\nPRAGMA user_version = {SCHEMA_VERSION};\nCOMMIT;")
+        except sqlite3.Error as exc:
+            if self._conn.in_transaction:
+                self._conn.execute("ROLLBACK")
+            raise StorageError(f"could not upgrade the results database from version {version} to "
+                               f"{SCHEMA_VERSION}; nothing was changed: {exc}") from exc
 
     # ---------- save --------------------------------------------------------------
 
@@ -328,10 +367,16 @@ class ResultStore:
         self._conn.execute(
             "INSERT INTO run_records (run_id, suite_id, position, task_id, repeat_index, difficulty,"
             " outcome, status, final_answer, duration_seconds, error, error_kind, llm_calls,"
-            " evaluation_passed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " evaluation_passed, retries_recorded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (run.run_id, suite_id, position, record.task_id, record.repeat, record.difficulty,
              record.outcome, run.status, run.final_answer, run.duration_seconds, run.error,
-             run.error_kind, run.llm_calls, None if ev is None else int(ev.passed)))
+             run.error_kind, run.llm_calls, None if ev is None else int(ev.passed),
+             int(run.retries is not None)))
+        self._conn.executemany(
+            "INSERT INTO retries (run_id, position, step_index, attempt, error_kind, status_code,"
+            " waited_seconds, request_id, occurred_at, succeeded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [(run.run_id, i, r.step_index, r.attempt, r.error_kind, r.status_code, r.waited_seconds,
+              r.request_id, _iso(r.occurred_at), int(r.succeeded)) for i, r in enumerate(run.retries or [])])
         self._conn.executemany(
             "INSERT INTO steps (run_id, step_index, llm_output, timestamp, input_tokens, output_tokens,"
             " tool_name, tool_arguments_json, tool_output, tool_error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -443,10 +488,18 @@ class ResultStore:
                           output=s["tool_output"], error=s["tool_error"]))
                  for s in self._conn.execute(
                      "SELECT * FROM steps WHERE run_id = ? ORDER BY step_index", (run_id,))]
+        retries = None  # not recorded (runs from before Phase 8): unknown, never "0 retries"
+        if row["retries_recorded"]:
+            retries = [RetryEvent(step_index=r["step_index"], attempt=r["attempt"], error_kind=r["error_kind"],
+                                  status_code=r["status_code"], waited_seconds=r["waited_seconds"],
+                                  request_id=r["request_id"], occurred_at=r["occurred_at"],
+                                  succeeded=bool(r["succeeded"]))
+                       for r in self._conn.execute(
+                           "SELECT * FROM retries WHERE run_id = ? ORDER BY position", (run_id,))]
         run = RunResult(run_id=run_id, task_id=row["task_id"], status=row["status"],
                         final_answer=row["final_answer"], trace=Trace(task_id=row["task_id"], steps=steps),
                         duration_seconds=row["duration_seconds"], error=row["error"],
-                        error_kind=row["error_kind"], llm_calls=row["llm_calls"])
+                        error_kind=row["error_kind"], llm_calls=row["llm_calls"], retries=retries)
         evaluation = None
         if row["evaluation_passed"] is not None:
             checks = [Check(name=c["name"], passed=bool(c["passed"]), reason=c["reason"])

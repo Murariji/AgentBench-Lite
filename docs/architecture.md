@@ -95,7 +95,8 @@ The agent must never see results or answers, so the two are never the same file.
 ```
 suite_runs ─┬─< suite_tasks >── task_versions     one row per distinct task definition (sha256)
             ├─< run_records ─┬─< steps            trace; tool call = optional columns, args = JSON
-            │                └─< checks           evaluation; none for infrastructure errors
+            │                ├─< checks           evaluation; none for infrastructure errors
+            │                └─< retries          retried LLM requests (schema v2)
             └─< skipped_runs                      runs that never happened, with the reason
 ```
 
@@ -105,8 +106,10 @@ suite_runs ─┬─< suite_tasks >── task_versions     one row per distinct
   per distinct content. Editing a prompt or tolerance creates a new version; old runs keep theirs.
 - **Integrity:** foreign keys on every connection, primary/unique keys, CHECK rules, every value a `?`
   parameter, and a whole suite saved in one transaction (all or nothing).
-- **Schema version:** `PRAGMA user_version` (currently 1). A file with another version, or tables
-  without a version, is refused rather than misread.
+- **Schema version:** `PRAGMA user_version` (currently 2). Older files are upgraded by `MIGRATIONS`
+  (one step per version, all in one transaction, rolled back on failure). Newer versions, or tables
+  without a version, are refused rather than misread. Runs stored before v2 have
+  `retries_recorded = 0`: their retries are unknown, not zero.
 - **Queries:** `list_suites()` (newest first, counts by SQL `GROUP BY`) and `task_history(task_id)`
   (every run of a task, including skipped ones, with its task version) are what the API will serve.
 - **Persistence is not execution:** a failed save raises `StorageError` and never changes the benchmark

@@ -119,6 +119,19 @@ class Trace(_BaseModel):
         return steps
 
 
+class RetryEvent(_BaseModel):
+    """One FAILED LLM request that was retried: what failed, how long we waited, how it ended."""
+
+    step_index: int = Field(ge=0)        # the agent-loop step whose LLM call failed
+    attempt: int = Field(ge=1)           # 1 = the first try of that call failed, 2 = the second, ...
+    error_kind: str = Field(min_length=1)   # e.g. "server", "rate_limit", "network"
+    status_code: int | None = None       # e.g. 503 / 429 (None for network errors)
+    waited_seconds: float = Field(ge=0)  # backoff or Retry-After wait before the next attempt
+    request_id: str | None = None        # provider's request id, if the provider gave one
+    occurred_at: datetime = Field(default_factory=_utc_now)
+    succeeded: bool                      # did this LLM call EVENTUALLY succeed after retrying?
+
+
 class RunResult(_BaseModel):
     """Outcome of running one Task: how it ended, the answer, and the full trace."""
 
@@ -131,6 +144,9 @@ class RunResult(_BaseModel):
     error: str | None = None       # human-readable reason when status == "error"
     error_kind: str | None = None  # machine-readable, e.g. "quota_exhausted", "auth"
     llm_calls: int = Field(default=0, ge=0)  # real requests made, INCLUDING retries
+    # None = NOT RECORDED (runs made before Phase 8 never captured retries; unknown, not zero).
+    # []   = recorded, and no request had to be retried.
+    retries: list[RetryEvent] | None = None
 
 
 class Check(_BaseModel):

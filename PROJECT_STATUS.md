@@ -15,6 +15,27 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 8 — Failure analysis: 🔶 in progress.** Step 8.1 ✅ (tests: **338 passed** when run by Claude;
+14 new — user to confirm). Step 8.2 (classifier + failure zoo) waits for approval.
+
+**Step 8.1 Retry recording + schema migration 1 → 2: ✅ complete.**
+- `RetryEvent(step_index, attempt, error_kind, status_code, waited_seconds, request_id, occurred_at,
+  succeeded)`; `RunResult.retries`: `None` = not recorded (pre-Phase-8 runs), `[]` = recorded, none.
+- Runner: every failed attempt that is followed by a wait and another try becomes an event; when the
+  call ends, its events get `succeeded` (did the call finally work). Exhausted retries: attempts 1..n-1
+  are events with `succeeded=False`, the last failure is the run error. Locally refused (budget)
+  attempts are not events. `LLMError.request_id` added (Gemini mapping does not extract one yet → None).
+- Storage schema **v2**: `MIGRATIONS[1]` = `ALTER TABLE run_records ADD COLUMN retries_recorded`
+  (DEFAULT 0 = unknown for existing rows) + new `retries` table. Opening runs create (if new) + all
+  migrations + new version in ONE transaction; failure → `ROLLBACK`, `StorageError("… nothing was
+  changed")`, file stays v1. New databases go through the same path (identical schema, tested). Newer
+  versions refused.
+- Genuine v1 fixture: `tests/fixtures/results_v1.sql` + `results_v1_suites.json`, dumped from a database
+  written by the Phase 7 code (`make_results_v1_fixture.py`, generated before the migration existed).
+- Verified on a COPY of the user's real `results.db`: v1 → v2, both Gemini runs intact, retries shown
+  as not recorded. The real file migrates automatically the first time it is opened.
+- Notes: `docs/learning/phase-8-notes.md`.
+
 **Phase 7 — Result storage: ✅ complete** (Steps 7.1, 7.2). Tests: **323 passed** (run by Claude;
 19 new in 7.2 — user to confirm).
 
@@ -315,6 +336,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 8 — Failure analysis (categorize why runs fail). Plan to be presented; needs explicit approval.
+Phase 8, Step 8.2 — `analysis.py` (`analyze_run`, `analyze_suite`): primary category by priority (invalid_response, no_data_used, tool_misuse, loop, unrecovered_tool_error, step_limit, misread_result, wrong_result, unparseable_answer, unclassified), signals with evidence, near-miss warnings, failure zoo. Waiting for user approval.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.
