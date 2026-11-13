@@ -137,3 +137,44 @@ Idea for later (not planned): a cheaper way to see the schema, measured the same
 - Pick the fair metric: LLM calls included unrelated retries; steps did not.
 - Report what did NOT improve as clearly as what did (near step limit: 3/3).
 - A good measurement often points at the next problem (schema exploration).
+
+## Step A.2 — shop-hard: hard, not ambiguous
+
+**Two task ideas were dropped after checking the data:** "largest monthly increase" is June, which is
+also simply the busiest month (no trap); "customers who never bought Electronics" is 3, exactly the
+customers who never ordered (ambiguous, duplicates shop-003).
+
+| Task | Answer (tolerance) | Trap |
+|---|---|---|
+| hard-001 median order value | 10995.5 (exact) | mean 16107; one middle value 10995 |
+| hard-002 customers Jan but not Feb | 5 (exact) | 15 (no "not"), 7 (orders) |
+| hard-003 % of ALL customers with ≥5 orders | 70.0 (±0.05) | 77.8 (non-buyers dropped) |
+| hard-004 units per order | 7.68 (±0.005) | 3.12 (per line), 2.46 (lines per order) |
+| hard-005 Electronics revenue share | 56.3 (±0.05) | 29.7 (units), 33.3 (products) |
+| hard-006 largest monthly decrease | April | January, June |
+| hard-007 busiest weekday | Monday | Sunday/Tuesday (`%w` 0 = Sunday) |
+| hard-008 most customers, ties alphabetical | Bengaluru | Kolkata/Jaipur/Chennai |
+| hard-009 distinct customers of the headphones | 21 (exact) | 28 (lines), 104 (units) |
+
+**Proofs in plain Python, not SQL** — a second SQL query written the same way could repeat the same
+mistake. Uniqueness is proven too (strict maxima; the tie is real; not on a rounding edge).
+
+**Mutation check:** a planted wrong key (hard-004 = 3.12) is caught by 7 tests from four directions
+(proof, evaluator, careful agent, analyzer).
+
+**Analyzer limitation found:** hard-007 (a weekday NUMBER read as the wrong name) and hard-008 (tie
+rule ignored, the right city was in a 7-row output) are `unclassified`: the rules can't attribute them,
+so they don't guess.
+
+**Pre-registration.** `registrations/shop-hard.v1.json` records the tasks and tools fingerprints, a
+hash and the grading of every task, the dataset, the time and the git commit. It was written on top of
+commit cc973b7 with the task file not yet committed (`suite_source_committed: false`, stated, not
+hidden); both are committed together BEFORE any real run, so git history shows the order. A test fails
+on any difference; a change = a new version, never an edit.
+
+## Self-check (A.2)
+11. Why is "Which city has the most customers?" broken, but fine with a tie rule?
+12. Why prove the median in Python instead of a second SQL query?
+13. Why does hard-004 use ±0.005 but hard-003 ±0.05?
+14. Why must the registration be committed before the first real run?
+15. Why is "unclassified" the right result for the sloppy hard-008 answer?

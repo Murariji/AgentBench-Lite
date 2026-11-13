@@ -147,7 +147,9 @@ def test_tasks_flag_estimate_covers_only_the_chosen_task():
 
 
 @pytest.mark.parametrize("args, message", [
-    (["--tasks", "shop-999"], "unknown task id(s): shop-999"),
+    (["--tasks", "shop-999"], "unknown task id(s) for suite shop: shop-999"),
+    (["--suite", "shop-hard", "--tasks", "shop-010"], "unknown task id(s) for suite shop-hard: shop-010"),
+    (["--suite", "nope"], "invalid choice: 'nope'"),
     (["--tasks", "shop-010", "shop-010"], "each task id may be given only once"),
 ])
 def test_tasks_flag_validation(args, message):

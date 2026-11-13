@@ -15,6 +15,36 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Benchmark v2 — Step A.2 Harder suite `shop-hard`: ✅ complete (offline)** (tests: 556 passed, 0 failed,
+0 skipped when run by Claude — user to confirm). PRE-REGISTERED as shop-hard v1 before any real run.
+No API calls. A.4 (real runs) is NOT approved; the 100-request budget is only a proposal.
+- `src/agentbench/suites/shop_hard.py`: 9 tasks on the SAME shop.db (dataset fingerprint unchanged),
+  all `hard`, `max_steps = 10`, required `sql_query`, same 4 tools. Rules, definitions, tie handling and
+  answer format are in each prompt; each number task has its own tolerance:
+  hard-001 median order value 10995.5 (exact) · hard-002 customers Jan-not-Feb 5 (exact) ·
+  hard-003 % of ALL customers with ≥5 orders 70.0 (±0.05) · hard-004 units per order 7.68 (±0.005) ·
+  hard-005 Electronics revenue share 56.3 (±0.05) · hard-006 month with largest decrease April ·
+  hard-007 busiest weekday Monday · hard-008 city with most customers, ties alphabetical, Bengaluru ·
+  hard-009 distinct customers of the headphones 21 (exact).
+- `agentbench.suites.SUITES` ({"shop", "shop-hard"}) and a cross-suite `get_task()`; the original 10 shop
+  tasks, shop.db, the tools, the evaluator and the analyzer are unchanged.
+- Proofs (`tests/test_shop_hard_suite.py`): raw rows + plain Python (statistics, sets, Counter, datetime,
+  Fraction) for every answer, plus uniqueness (strict maxima, the hard-008 tie is real, hard-005 not on a
+  rounding edge, the two middle values differ). 18 correct forms accepted (e.g. ₹10,995.50, 70%), 25 trap
+  answers rejected. A planted wrong key (hard-004 = 3.12) is caught by 7 tests.
+- Scripted agents (fixtures, not evidence about any model): careful 9/9; sloppy fails exactly its 6 traps
+  (001, 003, 004, 007, 008, 009) and passes 002, 005, 006. Analyzer: 4 × wrong_result; hard-007
+  (weekday-number mix-up) and hard-008 (tie rule ignored) → unclassified — an honest analyzer limitation,
+  documented, analyzer not changed.
+- Pre-registration: `agentbench/registration.py`, `scripts/register_suite.py`,
+  `src/agentbench/suites/registrations/shop-hard.v1.json` (suite 5f106feaff34, tasks ca11f5077756,
+  tools c1af5a87019e, dataset shop.db sha256:62143ef0c309, git_head cc973b7, suite_source_committed
+  false — committed together with it). Never overwritten (mode "x"); a test fails on any difference.
+  `models.tasks_fingerprint()` now shared by results and registration (same formula as before).
+- `run_benchmark.py --suite shop|shop-hard` (with --tasks validation per suite, estimate, --yes, budget).
+- Integration test updates: scripted agents now cover every task of every suite; the --tasks error names
+  the suite.
+
 **Benchmark v2 — Step A.3 Calculator v2: ✅ complete** (tests: **484 passed**; 73 new), measured.
 
 **A.3 measurement (user ran it, 2026-11-13, suite 42daa8df, gemini-3.5-flash-lite, shop-010 × 3,
@@ -446,6 +476,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Benchmark v2, Step A.2 — harder suite `shop-hard` on the same shop.db (tasks designed before any real run, answers proven by independent SQL). Plan first; waiting for user approval.
+Benchmark v2, Step A.4 — a few real shop-hard runs, gradually, within the free quota. NOT approved yet; plan first (proposal: 1 repeat, budget 100, estimate ~70–90 requests).
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

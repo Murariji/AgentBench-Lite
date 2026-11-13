@@ -49,9 +49,12 @@ def test_sloppy_agent_falls_into_exactly_the_four_traps(sloppy):
     assert str(compute_metrics(sloppy).pass_rate) == "6/10 (60.0%)"
 
 
-def test_scripts_cover_every_shop_task():
+def test_scripts_cover_every_task_of_every_suite():
+    from agentbench.suites import SUITES                     # shop + shop-hard (Step A.2)
+    all_ids = {t.id for tasks in SUITES.values() for t in tasks}
+    assert {t.id for t in SHOP_TASKS} < all_ids
     for kind, script in SCRIPTS.items():
-        assert set(script) == {t.id for t in SHOP_TASKS}, kind
+        assert set(script) == all_ids, kind
 
 
 def test_scripted_configs_are_labelled_as_fake():

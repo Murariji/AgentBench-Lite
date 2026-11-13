@@ -145,6 +145,25 @@ python scripts/results.py failures --all             # categories across all sto
 So far the real Gemini runs had no failures (the suite is too easy for that model), so the categories
 are verified on scripted test fixtures; harder tasks are planned.
 
+## The harder suite: shop-hard
+
+The 10 shop tasks turned out too easy for the model we test (40 of 40 real runs passed), so they can't
+tell configurations apart. `shop-hard` adds 9 realistic business questions on the same database where a
+plausible query gives a wrong answer: a median without a MEDIAN function, "January but not February",
+a percentage of ALL customers (LEFT JOIN), units per order vs per line, a revenue share, the largest
+monthly decrease, SQLite's weekday numbering, a tie rule, and distinct customers.
+
+- **Hard, not ambiguous:** every rule (precision, ties, definitions) is in the question; each number task
+  has its own tolerance.
+- **Proven:** every answer is recomputed independently in plain Python; 25 trap answers are rejected.
+- **Pre-registered** before any real run: `src/agentbench/suites/registrations/shop-hard.v1.json` freezes
+  tasks, answers, grading and tools (with the git commit). A change means a new registered version.
+
+```powershell
+python scripts/run_benchmark.py --suite shop-hard --compare                       # scripted, free
+python scripts/run_benchmark.py --suite shop-hard --agent gemini --budget 100     # real: estimate only
+```
+
 ## The calculator (version 2)
 
 The agent's calculator never uses `eval()`: it walks the parsed expression and allows only arithmetic

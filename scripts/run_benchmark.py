@@ -7,6 +7,7 @@
     python scripts/run_benchmark.py --agent gemini           # REAL Gemini: prints the estimate, sends NOTHING
     python scripts/run_benchmark.py --agent gemini --yes     # REAL Gemini: actually runs (free tier)
     python scripts/run_benchmark.py --agent gemini --tasks shop-010 --repeats 3 --budget 30   # only chosen tasks
+    python scripts/run_benchmark.py --suite shop-hard --compare                  # the harder suite (scripted, free)
 
 Real runs: >= 6 s between requests, a hard request budget (--budget, default 80) and a
 circuit breaker that stops the suite on auth / quota errors.
@@ -25,7 +26,7 @@ from agentbench.models import AgentConfig
 from agentbench.report import compare, export_json, format_report
 from agentbench.runner import DEFAULT_SYSTEM_PROMPT
 from agentbench.storage import DEFAULT_RESULTS_DB, save_with_recovery
-from agentbench.suites import SHOP_TASKS, shop_registry
+from agentbench.suites import SUITES, shop_registry
 from agentbench.suites.shop_agents import scripted_agent, scripted_config
 from agentbench.tools import ReadOnlySQLite
 
@@ -59,18 +60,21 @@ if __name__ == "__main__":
     parser.add_argument("--yes", action="store_true", help="confirm a REAL (quota-using) run")
     parser.add_argument("--results-db", default=str(DEFAULT_RESULTS_DB), help="where runs are stored")
     parser.add_argument("--tasks", nargs="+", metavar="TASK_ID", help="run only these tasks, e.g. shop-010")
+    parser.add_argument("--suite", choices=sorted(SUITES), default="shop", help="which task suite (default: shop)")
     args = parser.parse_args()
 
-    known = [t.id for t in SHOP_TASKS]
+    suite_tasks = SUITES[args.suite]
+    known = [t.id for t in suite_tasks]
     if args.tasks:
         unknown = [t for t in args.tasks if t not in known]
         if unknown:
-            parser.error(f"unknown task id(s): {', '.join(unknown)}. Known: {', '.join(known)}")
+            parser.error(f"unknown task id(s) for suite {args.suite}: {', '.join(unknown)}. "
+                         f"Known: {', '.join(known)}")
         if len(set(args.tasks)) != len(args.tasks):
             parser.error("each task id may be given only once")
     # Selected tasks keep the suite's own order. A subset has a different tasks fingerprint, so
     # comparing it with a full-suite run is correctly reported as "not a fair comparison".
-    tasks = [t for t in SHOP_TASKS if not args.tasks or t.id in args.tasks]
+    tasks = [t for t in suite_tasks if not args.tasks or t.id in args.tasks]
 
     if args.repeats < 1:
         parser.error("--repeats must be at least 1")
@@ -82,6 +86,7 @@ if __name__ == "__main__":
         # The estimate comes FIRST; without --yes we stop here with zero API calls.
         estimate = estimate_requests(tasks, gemini_config(), repeats=args.repeats, budget=args.budget)
         print("=== REAL Gemini run (uses free-tier quota) ===")
+        print(f"Suite      : {args.suite}")
         print(f"Tasks      : {', '.join(t.id for t in tasks)}")
         print(estimate.describe())
         print(f"Pacing     : at least {GEMINI_PACING_SECONDS:.0f} s between requests")
@@ -97,16 +102,16 @@ if __name__ == "__main__":
         tools = shop_registry(db)
         if real:
             client = gemini_client()
-            print(f"\n=== running shop suite with REAL {client.name} ===")
+            print(f"\n=== running {args.suite} suite with REAL {client.name} ===")
             suites = [run_suite(tasks, gemini_config(client.model), lambda task, repeat: client, tools,
-                                suite_name="shop", repeats=args.repeats, dataset=dataset,
+                                suite_name=args.suite, repeats=args.repeats, dataset=dataset,
                                 request_budget=args.budget)]
         else:
             suites = []
             for kind in (["careful", "sloppy"] if args.compare else [args.agent]):
-                print(f"\n=== running shop suite with the {kind} SCRIPTED agent ===")
+                print(f"\n=== running {args.suite} suite with the {kind} SCRIPTED agent ===")
                 suites.append(run_suite(tasks, scripted_config(kind), scripted_agent(kind), tools,
-                                        suite_name="shop", repeats=args.repeats, dataset=dataset))
+                                        suite_name=args.suite, repeats=args.repeats, dataset=dataset))
 
     all_stored = True
     for suite in suites:

@@ -210,6 +210,13 @@ class ToolSpec(_BaseModel):
         return hashlib.sha256(canonical_json(contract).encode("utf-8")).hexdigest()[:12]
 
 
+def tasks_fingerprint(tasks: "list[Task]") -> str:
+    """Short hash of full task definitions (prompt, answer, tolerances, tools, max steps), in order.
+    Used by SuiteResult and by suite pre-registration - one formula, so they always agree."""
+    text = "\n".join(t.model_dump_json() for t in tasks)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
 def tools_fingerprint(specs: "list[ToolSpec] | None") -> str | None:
     """sha256 of every tool's contract AND version, in name order. None = tools not recorded."""
     if specs is None:
@@ -325,10 +332,7 @@ class SuiteResult(_BaseModel):
     @property
     def tasks_fingerprint(self) -> str | None:
         """Short hash of the full task definitions: same fingerprint = same tasks AND grading."""
-        if not self.tasks:
-            return None
-        text = "\n".join(t.model_dump_json() for t in self.tasks)
-        return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+        return tasks_fingerprint(self.tasks) if self.tasks else None
 
     @property
     def tools_fingerprint(self) -> str | None:

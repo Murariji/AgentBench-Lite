@@ -1,0 +1,183 @@
+{
+  "format": "agentbench-suite-registration/1",
+  "suite": "shop-hard",
+  "version": 1,
+  "registered_at": "2026-11-13T09:14:29.018284+00:00",
+  "git_head": "cc973b7bea8606161347e6ac832ebf2850af9568",
+  "suite_source_committed": false,
+  "suite_fingerprint": "5f106feaff34",
+  "tasks_fingerprint": "ca11f5077756",
+  "tools_fingerprint": "c1af5a87019e",
+  "tools": {
+    "calculator": 2,
+    "describe_table": 1,
+    "list_tables": 1,
+    "sql_query": 1
+  },
+  "dataset": "shop.db sha256:62143ef0c309",
+  "evaluation": "agentbench.evaluators.evaluate (deterministic checks: status, answer, required_tools)",
+  "tasks": [
+    {
+      "id": "hard-001",
+      "task_hash": "92f3a5066d4d25019b57c0ade225a18f63ae34f102add62f60c8e483c2eb0929",
+      "expected_answer": "10995.5",
+      "answer_type": "number",
+      "abs_tolerance": 0.0,
+      "rel_tolerance": 0.0,
+      "required_tools": [
+        "sql_query"
+      ],
+      "allowed_tools": [
+        "list_tables",
+        "describe_table",
+        "sql_query",
+        "calculator"
+      ],
+      "max_steps": 10
+    },
+    {
+      "id": "hard-002",
+      "task_hash": "598466a2b2a1177a561d9fd8a9f98892e6396bb4c3970f60522c6e3fefdcd82b",
+      "expected_answer": "5",
+      "answer_type": "number",
+      "abs_tolerance": 0.0,
+      "rel_tolerance": 0.0,
+      "required_tools": [
+        "sql_query"
+      ],
+      "allowed_tools": [
+        "list_tables",
+        "describe_table",
+        "sql_query",
+        "calculator"
+      ],
+      "max_steps": 10
+    },
+    {
+      "id": "hard-003",
+      "task_hash": "23ff82ffd3ebfc55c6d25fce7991bed50fc108f7c7b8644ff60f7daf77d6b64c",
+      "expected_answer": "70.0",
+      "answer_type": "number",
+      "abs_tolerance": 0.05,
+      "rel_tolerance": 0.0,
+      "required_tools": [
+        "sql_query"
+      ],
+      "allowed_tools": [
+        "list_tables",
+        "describe_table",
+        "sql_query",
+        "calculator"
+      ],
+      "max_steps": 10
+    },
+    {
+      "id": "hard-004",
+      "task_hash": "8cb415a201b8e445a7e00073c2f0c5cefce5288c448c29026bd5ef7c612fdc6c",
+      "expected_answer": "7.68",
+      "answer_type": "number",
+      "abs_tolerance": 0.005,
+      "rel_tolerance": 0.0,
+      "required_tools": [
+        "sql_query"
+      ],
+      "allowed_tools": [
+        "list_tables",
+        "describe_table",
+        "sql_query",
+        "calculator"
+      ],
+      "max_steps": 10
+    },
+    {
+      "id": "hard-005",
+      "task_hash": "63bb1879ae10733d002eba2f41838f9c11fc40ab74ff6f6bc1e2d2590a72522d",
+      "expected_answer": "56.3",
+      "answer_type": "number",
+      "abs_tolerance": 0.05,
+      "rel_tolerance": 0.0,
+      "required_tools": [
+        "sql_query"
+      ],
+      "allowed_tools": [
+        "list_tables",
+        "describe_table",
+        "sql_query",
+        "calculator"
+      ],
+      "max_steps": 10
+    },
+    {
+      "id": "hard-006",
+      "task_hash": "3f92c9b93d8517bb98a1599bdb050309be5359815a77bd4610b7504d123251f2",
+      "expected_answer": "April",
+      "answer_type": "contains",
+      "abs_tolerance": 0.0,
+      "rel_tolerance": 0.0,
+      "required_tools": [
+        "sql_query"
+      ],
+      "allowed_tools": [
+        "list_tables",
+        "describe_table",
+        "sql_query",
+        "calculator"
+      ],
+      "max_steps": 10
+    },
+    {
+      "id": "hard-007",
+      "task_hash": "04bff24b5be85696c3713d889dc4966fefb08c737e2e085dbc0e64a47856fa46",
+      "expected_answer": "Monday",
+      "answer_type": "contains",
+      "abs_tolerance": 0.0,
+      "rel_tolerance": 0.0,
+      "required_tools": [
+        "sql_query"
+      ],
+      "allowed_tools": [
+        "list_tables",
+        "describe_table",
+        "sql_query",
+        "calculator"
+      ],
+      "max_steps": 10
+    },
+    {
+      "id": "hard-008",
+      "task_hash": "f394159aa619ca7d2a26d93636a6568f9ab80d1046a938bc90124bae4d4d00f3",
+      "expected_answer": "Bengaluru",
+      "answer_type": "contains",
+      "abs_tolerance": 0.0,
+      "rel_tolerance": 0.0,
+      "required_tools": [
+        "sql_query"
+      ],
+      "allowed_tools": [
+        "list_tables",
+        "describe_table",
+        "sql_query",
+        "calculator"
+      ],
+      "max_steps": 10
+    },
+    {
+      "id": "hard-009",
+      "task_hash": "923294580f8633e006a0b161eec9d4a2340468ca82d0d8e360cc02c0969cdf12",
+      "expected_answer": "21",
+      "answer_type": "number",
+      "abs_tolerance": 0.0,
+      "rel_tolerance": 0.0,
+      "required_tools": [
+        "sql_query"
+      ],
+      "allowed_tools": [
+        "list_tables",
+        "describe_table",
+        "sql_query",
+        "calculator"
+      ],
+      "max_steps": 10
+    }
+  ]
+}
