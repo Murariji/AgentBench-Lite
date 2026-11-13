@@ -1,0 +1,963 @@
+{
+ "endpoints": {
+  "GET /": {
+   "params": [],
+   "request": null,
+   "responses": {
+    "200": "IndexOut",
+    "500": "ErrorResponse"
+   }
+  },
+  "GET /compare": {
+   "params": [
+    "query:ids:array[string]!"
+   ],
+   "request": null,
+   "responses": {
+    "200": "CompareOut",
+    "404": "ErrorResponse",
+    "409": "ErrorResponse",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse",
+    "503": "ErrorResponse"
+   }
+  },
+  "GET /health": {
+   "params": [],
+   "request": null,
+   "responses": {
+    "200": "HealthOut",
+    "500": "ErrorResponse",
+    "503": "ErrorResponse"
+   }
+  },
+  "GET /registrations": {
+   "params": [],
+   "request": null,
+   "responses": {
+    "200": "array[RegisteredSuiteOut]",
+    "500": "ErrorResponse"
+   }
+  },
+  "GET /runs": {
+   "params": [
+    "query:limit:integer",
+    "query:offset:integer"
+   ],
+   "request": null,
+   "responses": {
+    "200": "JobPage",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse"
+   }
+  },
+  "GET /runs/{job_id}": {
+   "params": [
+    "path:job_id:string!"
+   ],
+   "request": null,
+   "responses": {
+    "200": "JobOut",
+    "404": "ErrorResponse",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse"
+   }
+  },
+  "GET /suites": {
+   "params": [
+    "query:limit:integer",
+    "query:offset:integer",
+    "query:real_only:boolean"
+   ],
+   "request": null,
+   "responses": {
+    "200": "SuitePage",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse",
+    "503": "ErrorResponse"
+   }
+  },
+  "GET /suites/{suite_id}": {
+   "params": [
+    "path:suite_id:string!"
+   ],
+   "request": null,
+   "responses": {
+    "200": "SuiteDetailOut",
+    "404": "ErrorResponse",
+    "409": "ErrorResponse",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse",
+    "503": "ErrorResponse"
+   }
+  },
+  "GET /suites/{suite_id}/failures": {
+   "params": [
+    "path:suite_id:string!"
+   ],
+   "request": null,
+   "responses": {
+    "200": "FailuresOut",
+    "404": "ErrorResponse",
+    "409": "ErrorResponse",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse",
+    "503": "ErrorResponse"
+   }
+  },
+  "GET /suites/{suite_id}/runs/{run_id}": {
+   "params": [
+    "path:run_id:string!",
+    "path:suite_id:string!"
+   ],
+   "request": null,
+   "responses": {
+    "200": "RunDetailOut",
+    "404": "ErrorResponse",
+    "409": "ErrorResponse",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse",
+    "503": "ErrorResponse"
+   }
+  },
+  "GET /tasks/{task_id}/history": {
+   "params": [
+    "path:task_id:string!",
+    "query:limit:integer",
+    "query:offset:integer"
+   ],
+   "request": null,
+   "responses": {
+    "200": "HistoryPage",
+    "404": "ErrorResponse",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse",
+    "503": "ErrorResponse"
+   }
+  },
+  "GET /tasks/{task_id}/measure": {
+   "params": [
+    "path:task_id:string!"
+   ],
+   "request": null,
+   "responses": {
+    "200": "MeasureOut",
+    "404": "ErrorResponse",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse",
+    "503": "ErrorResponse"
+   }
+  },
+  "POST /estimates": {
+   "params": [],
+   "request": "RunIn",
+   "responses": {
+    "200": "EstimateOut",
+    "413": "ErrorResponse",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse"
+   }
+  },
+  "POST /runs": {
+   "params": [],
+   "request": "RunIn",
+   "responses": {
+    "202": "JobOut",
+    "403": "ErrorResponse",
+    "409": "ErrorResponse",
+    "413": "ErrorResponse",
+    "422": "ErrorResponse",
+    "500": "ErrorResponse"
+   }
+  }
+ },
+ "format": "agentbench-api-contract/1",
+ "schemas": {
+  "AgentConfig": {
+   "fields": {
+    "max_attempts": "integer",
+    "min_interval_seconds": "number",
+    "model": "string",
+    "name": "string",
+    "prompt_hash": "string",
+    "provider": "enum(fake,gemini)",
+    "system_prompt": "string"
+   },
+   "required": [
+    "model",
+    "name",
+    "provider",
+    "system_prompt"
+   ]
+  },
+  "Check": {
+   "fields": {
+    "name": "string",
+    "passed": "boolean",
+    "reason": "string"
+   },
+   "required": [
+    "name",
+    "passed",
+    "reason"
+   ]
+  },
+  "CompareOut": {
+   "fields": {
+    "changed_dimensions": "array[string]",
+    "conclusions": "array[string]",
+    "dimensions": "object[array[string]]",
+    "fair": "boolean",
+    "metrics": "array[SuiteMetrics]",
+    "suite_ids": "array[string]",
+    "tasks": "array[TaskOutcomesOut]",
+    "tools_status": "string",
+    "unfair_dimensions": "array[string]"
+   },
+   "required": [
+    "changed_dimensions",
+    "conclusions",
+    "dimensions",
+    "fair",
+    "metrics",
+    "suite_ids",
+    "tasks",
+    "tools_status",
+    "unfair_dimensions"
+   ]
+  },
+  "ErrorBody": {
+   "fields": {
+    "code": "string",
+    "details": "any",
+    "message": "string"
+   },
+   "required": [
+    "code",
+    "message"
+   ]
+  },
+  "ErrorResponse": {
+   "fields": {
+    "error": "ErrorBody"
+   },
+   "required": [
+    "error"
+   ]
+  },
+  "EstimateOut": {
+   "fields": {
+    "agent": "string",
+    "allowed": "boolean",
+    "estimate": "null|object",
+    "kind": "string",
+    "note": "string",
+    "real_runs_enabled": "boolean",
+    "reasons": "array[string]",
+    "registration": "RegistrationOut",
+    "runs": "integer",
+    "suite": "string",
+    "tasks": "array[string]"
+   },
+   "required": [
+    "agent",
+    "allowed",
+    "estimate",
+    "kind",
+    "real_runs_enabled",
+    "reasons",
+    "registration",
+    "runs",
+    "suite",
+    "tasks"
+   ]
+  },
+  "EvaluationResult": {
+   "fields": {
+    "checks": "array[Check]",
+    "passed": "boolean",
+    "run_id": "string",
+    "task_id": "string"
+   },
+   "required": [
+    "checks",
+    "passed",
+    "run_id",
+    "task_id"
+   ]
+  },
+  "FailuresOut": {
+   "fields": {
+    "analysis": "SuiteAnalysis",
+    "note": "string"
+   },
+   "required": [
+    "analysis",
+    "note"
+   ]
+  },
+  "HealthOut": {
+   "fields": {
+    "real_runs_enabled": "boolean",
+    "schema_version": "integer",
+    "status": "string"
+   },
+   "required": [
+    "real_runs_enabled",
+    "schema_version",
+    "status"
+   ]
+  },
+  "HistoryPage": {
+   "fields": {
+    "items": "array[TaskHistoryEntry]",
+    "pagination": "Pagination",
+    "task_id": "string"
+   },
+   "required": [
+    "items",
+    "pagination",
+    "task_id"
+   ]
+  },
+  "IndexOut": {
+   "fields": {
+    "docs": "string",
+    "health": "string",
+    "local_only": "string",
+    "name": "string",
+    "real_runs_enabled": "boolean",
+    "version": "string"
+   },
+   "required": [
+    "docs",
+    "health",
+    "local_only",
+    "name",
+    "real_runs_enabled",
+    "version"
+   ]
+  },
+  "JobOut": {
+   "fields": {
+    "agent": "string",
+    "budget": "integer|null",
+    "completed_tasks": "integer",
+    "created_at": "string",
+    "current_repeat": "integer|null",
+    "current_task": "null|string",
+    "error": "null|string",
+    "finished_at": "null|string",
+    "job_id": "string",
+    "kind": "string",
+    "note": "string",
+    "percent": "number",
+    "progress": "array[string]",
+    "recovery_path": "null|string",
+    "repeats": "integer",
+    "save_error": "null|string",
+    "saved": "boolean|null",
+    "started_at": "null|string",
+    "status": "string",
+    "suite": "string",
+    "suite_id": "null|string",
+    "summary": "null|object",
+    "tasks": "array[string]",
+    "total_tasks": "integer"
+   },
+   "required": [
+    "agent",
+    "budget",
+    "completed_tasks",
+    "created_at",
+    "current_repeat",
+    "current_task",
+    "error",
+    "finished_at",
+    "job_id",
+    "kind",
+    "note",
+    "percent",
+    "progress",
+    "recovery_path",
+    "repeats",
+    "save_error",
+    "saved",
+    "started_at",
+    "status",
+    "suite",
+    "suite_id",
+    "summary",
+    "tasks",
+    "total_tasks"
+   ]
+  },
+  "JobPage": {
+   "fields": {
+    "items": "array[JobOut]",
+    "pagination": "Pagination"
+   },
+   "required": [
+    "items",
+    "pagination"
+   ]
+  },
+  "MeasureGroupOut": {
+   "fields": {
+    "avg_llm_calls": "null|number",
+    "avg_steps": "null|number",
+    "calculator": "string",
+    "evaluated": "integer",
+    "infra_errors": "array[string]",
+    "kind": "string",
+    "model": "string",
+    "near_step_limit": "integer",
+    "passed": "integer",
+    "provider": "string",
+    "round_errors": "integer",
+    "runs_with_round_errors": "integer",
+    "scheduled": "integer",
+    "skipped": "integer",
+    "step_limit_failures": "integer",
+    "suites": "integer",
+    "tool_errors": "integer",
+    "tools": "string"
+   },
+   "required": [
+    "avg_llm_calls",
+    "avg_steps",
+    "calculator",
+    "evaluated",
+    "infra_errors",
+    "kind",
+    "model",
+    "near_step_limit",
+    "passed",
+    "provider",
+    "round_errors",
+    "runs_with_round_errors",
+    "scheduled",
+    "skipped",
+    "step_limit_failures",
+    "suites",
+    "tool_errors",
+    "tools"
+   ]
+  },
+  "MeasureOut": {
+   "fields": {
+    "groups": "array[MeasureGroupOut]",
+    "limitations": "array[string]",
+    "task_id": "string"
+   },
+   "required": [
+    "groups",
+    "limitations",
+    "task_id"
+   ]
+  },
+  "Pagination": {
+   "fields": {
+    "limit": "integer",
+    "next_offset": "integer|null",
+    "offset": "integer",
+    "returned": "integer",
+    "total": "integer"
+   },
+   "required": [
+    "limit",
+    "next_offset",
+    "offset",
+    "returned",
+    "total"
+   ]
+  },
+  "Rate": {
+   "fields": {
+    "eligible": "integer",
+    "passed": "integer"
+   },
+   "required": [
+    "eligible",
+    "passed"
+   ]
+  },
+  "RateOut": {
+   "fields": {
+    "eligible": "integer",
+    "passed": "integer",
+    "rate": "null|number",
+    "text": "string"
+   },
+   "required": [
+    "eligible",
+    "passed",
+    "rate",
+    "text"
+   ]
+  },
+  "RegisteredSuiteOut": {
+   "fields": {
+    "dataset": "null|string",
+    "git_head": "null|string",
+    "registered_at": "string",
+    "suite": "string",
+    "suite_fingerprint": "string",
+    "tasks": "array[string]",
+    "tasks_fingerprint": "string",
+    "tools": "object[integer]",
+    "tools_fingerprint": "string",
+    "version": "integer"
+   },
+   "required": [
+    "dataset",
+    "git_head",
+    "registered_at",
+    "suite",
+    "suite_fingerprint",
+    "tasks",
+    "tasks_fingerprint",
+    "tools",
+    "tools_fingerprint",
+    "version"
+   ]
+  },
+  "RegistrationOut": {
+   "fields": {
+    "line": "string",
+    "notes": "array[string]",
+    "problems": "array[string]",
+    "status": "string",
+    "suite_fingerprint": "null|string",
+    "version": "integer|null"
+   },
+   "required": [
+    "line",
+    "notes",
+    "problems",
+    "status"
+   ]
+  },
+  "RetryEvent": {
+   "fields": {
+    "attempt": "integer",
+    "error_kind": "string",
+    "occurred_at": "string",
+    "request_id": "null|string",
+    "status_code": "integer|null",
+    "step_index": "integer",
+    "succeeded": "boolean",
+    "waited_seconds": "number"
+   },
+   "required": [
+    "attempt",
+    "error_kind",
+    "step_index",
+    "succeeded",
+    "waited_seconds"
+   ]
+  },
+  "RunAnalysis": {
+   "fields": {
+    "category": "enum(invalid_response,no_data_used,tool_misuse,loop,unrecovered_tool_error,step_limit,misread_result,wrong_result,unparseable_answer,unclassified)|null",
+    "infra_error_kind": "null|string",
+    "outcome": "string",
+    "repeat": "integer",
+    "retries_recorded": "boolean",
+    "run_id": "string",
+    "signals": "array[Signal]",
+    "task_id": "string",
+    "warnings": "array[Signal]"
+   },
+   "required": [
+    "outcome",
+    "repeat",
+    "retries_recorded",
+    "run_id",
+    "task_id"
+   ]
+  },
+  "RunDetailOut": {
+   "fields": {
+    "analysis": "RunAnalysis|null",
+    "record": "RunRecord",
+    "suite_id": "string"
+   },
+   "required": [
+    "analysis",
+    "record",
+    "suite_id"
+   ]
+  },
+  "RunIn": {
+   "fields": {
+    "agent": "enum(careful,sloppy,gemini)",
+    "budget": "integer|null",
+    "confirm": "boolean",
+    "repeats": "integer",
+    "suite": "string",
+    "tasks": "array[string]|null"
+   },
+   "required": [
+    "agent"
+   ]
+  },
+  "RunRecord": {
+   "fields": {
+    "difficulty": "enum(easy,medium,hard)|null",
+    "evaluation": "EvaluationResult|null",
+    "outcome": "enum(passed,failed,infra_error)",
+    "repeat": "integer",
+    "run": "RunResult",
+    "task_id": "string"
+   },
+   "required": [
+    "outcome",
+    "repeat",
+    "run",
+    "task_id"
+   ]
+  },
+  "RunResult": {
+   "fields": {
+    "duration_seconds": "number",
+    "error": "null|string",
+    "error_kind": "null|string",
+    "final_answer": "null|string",
+    "llm_calls": "integer",
+    "retries": "array[RetryEvent]|null",
+    "run_id": "string",
+    "status": "enum(completed,max_steps,error)",
+    "task_id": "string",
+    "trace": "Trace"
+   },
+   "required": [
+    "duration_seconds",
+    "status",
+    "task_id",
+    "trace"
+   ]
+  },
+  "RunSummaryOut": {
+   "fields": {
+    "difficulty": "null|string",
+    "duration_seconds": "number",
+    "error_kind": "null|string",
+    "failed_checks": "array[string]",
+    "final_answer": "null|string",
+    "llm_calls": "integer",
+    "outcome": "string",
+    "repeat": "integer",
+    "retries": "integer|null",
+    "run_id": "string",
+    "status": "string",
+    "steps": "integer",
+    "task_id": "string"
+   },
+   "required": [
+    "difficulty",
+    "duration_seconds",
+    "error_kind",
+    "failed_checks",
+    "final_answer",
+    "llm_calls",
+    "outcome",
+    "repeat",
+    "retries",
+    "run_id",
+    "status",
+    "steps",
+    "task_id"
+   ]
+  },
+  "Signal": {
+   "fields": {
+    "evidence": "string",
+    "name": "string",
+    "step_indexes": "array[integer]",
+    "tool_names": "array[string]"
+   },
+   "required": [
+    "evidence",
+    "name"
+   ]
+  },
+  "SkippedRun": {
+   "fields": {
+    "reason": "string",
+    "repeat": "integer",
+    "task_id": "string"
+   },
+   "required": [
+    "reason",
+    "repeat",
+    "task_id"
+   ]
+  },
+  "Step": {
+   "fields": {
+    "index": "integer",
+    "input_tokens": "integer|null",
+    "llm_output": "string",
+    "output_tokens": "integer|null",
+    "timestamp": "string",
+    "tool_call": "ToolCall|null"
+   },
+   "required": [
+    "index",
+    "llm_output"
+   ]
+  },
+  "SuiteAnalysis": {
+   "fields": {
+    "category_counts": "object[integer]",
+    "failed_runs": "integer",
+    "infra_errors": "integer",
+    "passed_runs": "integer",
+    "retries_not_recorded": "integer",
+    "runs": "array[RunAnalysis]",
+    "skipped_runs": "integer",
+    "suite_id": "string",
+    "warning_counts": "object[integer]"
+   },
+   "required": [
+    "category_counts",
+    "failed_runs",
+    "infra_errors",
+    "passed_runs",
+    "retries_not_recorded",
+    "runs",
+    "skipped_runs",
+    "suite_id",
+    "warning_counts"
+   ]
+  },
+  "SuiteDetailOut": {
+   "fields": {
+    "complete": "boolean",
+    "config": "AgentConfig",
+    "config_fingerprint": "string",
+    "dataset": "null|string",
+    "estimated_requests": "integer|null",
+    "finished_at": "null|string",
+    "kind": "string",
+    "metrics": "SuiteMetrics",
+    "registration": "RegistrationOut",
+    "repeats": "integer",
+    "request_budget": "integer|null",
+    "runs": "array[RunSummaryOut]",
+    "skipped": "array[SkippedRun]",
+    "started_at": "string",
+    "stop_reason": "null|string",
+    "suite_id": "string",
+    "suite_name": "string",
+    "tasks_fingerprint": "null|string",
+    "tools": "array[ToolSpec]|null",
+    "tools_fingerprint": "null|string"
+   },
+   "required": [
+    "complete",
+    "config",
+    "config_fingerprint",
+    "dataset",
+    "estimated_requests",
+    "finished_at",
+    "kind",
+    "metrics",
+    "registration",
+    "repeats",
+    "request_budget",
+    "runs",
+    "skipped",
+    "started_at",
+    "stop_reason",
+    "suite_id",
+    "suite_name",
+    "tasks_fingerprint",
+    "tools",
+    "tools_fingerprint"
+   ]
+  },
+  "SuiteMetrics": {
+   "fields": {
+    "avg_duration_seconds": "null|number",
+    "avg_input_tokens": "null|number",
+    "avg_llm_calls": "null|number",
+    "avg_output_tokens": "null|number",
+    "avg_steps": "null|number",
+    "by_difficulty": "object[Rate]",
+    "complete": "boolean",
+    "eligible_runs": "integer",
+    "failed_checks": "array[array[any]]",
+    "failed_runs": "integer",
+    "infra_errors": "integer",
+    "k": "integer",
+    "pass_at_k": "Rate|null",
+    "pass_pow_k": "Rate|null",
+    "pass_rate": "Rate",
+    "passed_runs": "integer",
+    "scheduled_runs": "integer",
+    "skipped_runs": "integer",
+    "tool_calls": "integer",
+    "tool_errors": "integer",
+    "total_duration_seconds": "number",
+    "total_llm_calls": "integer"
+   },
+   "required": [
+    "avg_duration_seconds",
+    "avg_input_tokens",
+    "avg_llm_calls",
+    "avg_output_tokens",
+    "avg_steps",
+    "by_difficulty",
+    "complete",
+    "eligible_runs",
+    "failed_checks",
+    "failed_runs",
+    "infra_errors",
+    "k",
+    "pass_at_k",
+    "pass_pow_k",
+    "pass_rate",
+    "passed_runs",
+    "scheduled_runs",
+    "skipped_runs",
+    "tool_calls",
+    "tool_errors",
+    "total_duration_seconds",
+    "total_llm_calls"
+   ]
+  },
+  "SuitePage": {
+   "fields": {
+    "items": "array[SuiteSummaryOut]",
+    "pagination": "Pagination"
+   },
+   "required": [
+    "items",
+    "pagination"
+   ]
+  },
+  "SuiteSummaryOut": {
+   "fields": {
+    "complete": "boolean",
+    "config_name": "string",
+    "failed": "integer",
+    "finished_at": "null|string",
+    "infra_errors": "integer",
+    "kind": "string",
+    "model": "string",
+    "pass_rate": "RateOut",
+    "passed": "integer",
+    "provider": "string",
+    "repeats": "integer",
+    "scheduled_runs": "integer",
+    "short_id": "string",
+    "skipped": "integer",
+    "started_at": "string",
+    "stop_reason": "null|string",
+    "suite_id": "string",
+    "suite_name": "string",
+    "total_llm_calls": "integer"
+   },
+   "required": [
+    "complete",
+    "config_name",
+    "failed",
+    "finished_at",
+    "infra_errors",
+    "kind",
+    "model",
+    "pass_rate",
+    "passed",
+    "provider",
+    "repeats",
+    "scheduled_runs",
+    "short_id",
+    "skipped",
+    "started_at",
+    "stop_reason",
+    "suite_id",
+    "suite_name",
+    "total_llm_calls"
+   ]
+  },
+  "TaskHistoryEntry": {
+   "fields": {
+    "config_name": "string",
+    "duration_seconds": "null|number",
+    "error_kind": "null|string",
+    "final_answer": "null|string",
+    "llm_calls": "integer|null",
+    "model": "string",
+    "outcome": "string",
+    "prompt_hash": "string",
+    "provider": "string",
+    "reason": "null|string",
+    "repeat": "integer",
+    "started_at": "string",
+    "suite_id": "string",
+    "task_hash": "null|string",
+    "tools": "array[ToolSpec]|null",
+    "tools_fingerprint": "null|string"
+   },
+   "required": [
+    "config_name",
+    "model",
+    "outcome",
+    "prompt_hash",
+    "provider",
+    "repeat",
+    "started_at",
+    "suite_id",
+    "task_hash"
+   ]
+  },
+  "TaskOutcomesOut": {
+   "fields": {
+    "differs": "boolean",
+    "outcomes": "array[string]",
+    "task_id": "string"
+   },
+   "required": [
+    "differs",
+    "outcomes",
+    "task_id"
+   ]
+  },
+  "ToolCall": {
+   "fields": {
+    "arguments": "object",
+    "error": "null|string",
+    "output": "null|string",
+    "tool_name": "string"
+   },
+   "required": [
+    "tool_name"
+   ]
+  },
+  "ToolSpec": {
+   "fields": {
+    "description": "string",
+    "name": "string",
+    "parameters": "object",
+    "version": "integer"
+   },
+   "required": [
+    "description",
+    "name",
+    "parameters",
+    "version"
+   ]
+  },
+  "Trace": {
+   "fields": {
+    "steps": "array[Step]",
+    "task_id": "string"
+   },
+   "required": [
+    "task_id"
+   ]
+  }
+ }
+}

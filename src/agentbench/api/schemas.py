@@ -192,6 +192,15 @@ class CompareOut(BaseModel):
 
 # ---------- misc --------------------------------------------------------------------------
 
+class IndexOut(BaseModel):
+    name: str
+    version: str
+    docs: str
+    health: str
+    real_runs_enabled: bool
+    local_only: str
+
+
 class HealthOut(BaseModel):
     status: str
     schema_version: int

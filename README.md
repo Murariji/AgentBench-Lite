@@ -22,7 +22,7 @@ and repeats until it gives a final answer. AgentBench-Lite wraps that loop with:
 | **LLM layer** | Provider-independent interface; Google Gemini first, Ollama/Groq later | ✅ Implemented |
 | **Benchmarks** | Run task suites, compute metrics, compare agent configurations, free-tier safety | ✅ Implemented |
 | **Storage** | SQLite history of every run, trace and check; queries and a results CLI | ✅ Implemented |
-| **API** | FastAPI REST backend over the framework and storage | 🔶 Read-only endpoints implemented |
+| **API** | FastAPI REST backend over the framework and storage | ✅ Implemented (local) |
 | **Dashboard** | React + TypeScript UI for runs, traces and charts | 🗓️ Planned |
 
 ## Implemented so far
@@ -257,6 +257,10 @@ runs are always allowed. **Real Gemini runs are off** unless the server is start
 `--allow-real-runs`, and even then each run needs `confirm: true`, a `budget` within `--max-real-budget`,
 and a passing registration guard. Job status lives in memory (lost on restart); results are saved to
 SQLite, or to a JSON recovery file if saving fails (`saved: false`, `recovery_path`).
+
+Full reference: **[docs/api.md](docs/api.md)** — endpoints, error codes, job states, the real-run gates,
+CORS (only the React dev origins `http://localhost:5173` / `http://127.0.0.1:5173`, never `*`), the 64 KB
+request limit, and the pinned API contract that the dashboard relies on.
 
 ## Tech stack
 

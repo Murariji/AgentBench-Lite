@@ -93,6 +93,16 @@ SQLite (or a JSON recovery file). CLI and API share `agentbench/runs.py` (valida
 estimate, Gemini setup, execution), so both enforce the same rules. Real runs need the server flag
 `--allow-real-runs`, `confirm`, a budget ≤ the server maximum, and a passing guard.
 
+**Browser access (9.3).** Only the React dev origins may read responses (CORS, GET/POST, no credentials);
+request bodies are limited to 64 KB as they arrive. The API contract (endpoints, fields, types) is pinned
+in `src/agentbench/api/contract.json` and tested; changes go through `scripts/update_api_contract.py`
+with a recorded reason. Reference: [api.md](api.md).
+
+```
+React dashboard (localhost:5173) --HTTP + CORS--> FastAPI (127.0.0.1:8000) --> framework --> SQLite
+                                                          | real runs only through the 4 gates
+```
+
 ## Result storage (Phase 7)
 
 Two separate SQLite files, both git-ignored:

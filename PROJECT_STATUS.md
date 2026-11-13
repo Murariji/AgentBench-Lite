@@ -15,9 +15,32 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Phase 9 — FastAPI backend: 🔶 in progress. Steps 9.1 ✅ and 9.2 ✅** (tests: 649 passed, 0 failed,
-0 skipped when run by Claude; 27 new in 9.2 — user to confirm). 9.3 (CORS, hardening, docs) waits for
-approval. A.4 Stage 2 can still be run by the user at any time through the CLI.
+**Phase 9 — FastAPI backend: ✅ complete (9.1, 9.2, 9.3)** (tests: 699 passed, 0 failed, 0 skipped when run
+by Claude; 50 new in 9.3 — user to confirm). Phase 10 (React dashboard) waits for explicit approval.
+A.4 Stage 2 can still be run by the user at any time through the CLI.
+
+**Step 9.3 Hardening for the dashboard: ✅ complete.**
+- CORS (FastAPI's CORSMiddleware): only http://localhost:5173 and http://127.0.0.1:5173 by default, plus
+  exact origins via `--cors-origin` (validated: no '*', no path); methods GET/POST; header Content-Type; no
+  credentials. Preflight OPTIONS answered for allowed origins (200), refused for others (400, no
+  allow-origin header). CORS is documented as a browser rule, not the safety layer.
+- `api/middleware.py` BodySizeLimit (64 KB): refuses a too-large Content-Length before reading AND counts
+  the bytes that actually arrive (chunked bodies); 413 payload_too_large in the error shape; exactly 64 KB
+  passes to normal validation (422). CORS wraps it, so a 413 still carries CORS headers.
+- `Cache-Control: no-store` on /runs and /estimates; `GET /` index; `check_startup()` + serve_api.py
+  refuses to start on an unusable results database; `--cors-origin` flag.
+- OpenAPI: every endpoint documents exactly the error codes it can return (all as ErrorResponse; FastAPI's
+  default HTTPValidationError, which did not match reality, is gone). Request examples for POST /runs and
+  /estimates: two scripted ones and one clearly labelled "REAL Gemini run - only if the server was started
+  with --allow-real-runs"; executing it on a default server is 403 and builds no client (tested).
+- API contract: `api/contract.py` (compact endpoints + schemas), snapshot `src/agentbench/api/contract.json`
+  (14 endpoints, 40 schemas), `tests/test_api_contract.py` (snapshot + readable pins of request/response
+  fields and types + status codes and error structure), `scripts/update_api_contract.py` (shows the diff;
+  `--write` requires `--reason`, which is logged in docs/api.md).
+- `docs/api.md`: full reference (endpoints, errors, pagination, runs and job states, the four gates, CORS,
+  contract, contract-change log).
+- Sabotage checks: body limit trusting only Content-Length → 2 chunked tests fail.
+
 
 **Step 9.2 Background runs + real-run gates: ✅ complete.**
 - `src/agentbench/runs.py` (shared by CLI and API): `plan_run()` (validation, registration guard incl.
@@ -548,7 +571,7 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
   more realistic tools (SQL query over sample SQLite DB, date calculator, unit converter, file reader)
 - [x] **Phase 7** — Storage: SQLite for runs & traces (adds `run_id`)
 - [x] **Phase 8** — Failure analysis: categorize failures
-- [ ] **Phase 9** — FastAPI backend: REST API over the framework and database
+- [x] **Phase 9** — FastAPI backend: REST API over the framework and database
 - [ ] **Phase 10** — Dashboard: React + TypeScript + Tailwind + Recharts
 - [ ] **Phase 11** — Docker: package backend (and dashboard) for one-command start
 
@@ -556,6 +579,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 9, Step 9.3 — CORS for the local dashboard, error/docs polish, README and architecture. Waiting for approval. In parallel, any time: A.4 Stage 2 via the CLI (user-started; 9 tasks, cap 100).
+Phase 10 — React + TypeScript + Tailwind + Recharts dashboard against the pinned API contract (needs Node.js). Plan first; waiting for explicit approval. In parallel, any time: A.4 Stage 2 via the CLI.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

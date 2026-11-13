@@ -100,3 +100,30 @@ for BOTH the CLI and the API.
 6. The budget runs out during task 2 of 2. Which status does the job get, and is task 1 kept?
 7. Why is the real Gemini client built INSIDE the job and not when the request arrives?
 8. The server restarts. What happens to `GET /runs/<old id>` and to `GET /suites/<its suite id>`?
+
+## Step 9.3 — ready for a browser
+
+**Origin** = scheme + host + port. `http://localhost:5173` (dashboard) ≠ `http://127.0.0.1:8000` (API).
+**Same-origin policy:** a page may only READ responses from its own origin, unless the other server allows
+it with **CORS** headers (`Access-Control-Allow-Origin: http://localhost:5173`).
+**Preflight:** before a JSON POST, the browser asks with `OPTIONS` "may this origin POST with
+Content-Type?". Allowed origins get 200; others get 400 and no permission — the browser never sends the
+real request.
+**CORS is not security:** curl, scripts and Swagger ignore it. The real protections stay on the server
+(the four gates, the lock, 127.0.0.1).
+
+**Body-size limit:** a client may announce a size (Content-Length) or stream chunks with no size at all,
+so the limit counts the bytes that ARRIVE and stops at 64 KB → 413. Proven by sabotage: trusting only
+Content-Length let a chunked 70 KB body through (2 tests failed).
+
+**API contract:** the promise to the dashboard (paths, methods, fields, types, error shapes), saved in
+`contract.json`. A test compares the live API with it; updating it needs a written reason and is logged.
+It immediately caught a real problem: the docs said 422 errors used FastAPI's default shape, but the API
+returns `{"error": ...}` — now every endpoint documents exactly the codes it can return.
+
+## Self-check (9.3)
+9. Why does the browser need a preflight for `POST /runs` with a JSON body?
+10. A website at http://evil.example calls our API from your browser. What happens, and why is that still
+    not what protects your Gemini quota?
+11. Why can't the 64 KB limit rely on the Content-Length header alone?
+12. Someone renames `completed_tasks` in JobOut. Which test fails, and how do they make the change properly?

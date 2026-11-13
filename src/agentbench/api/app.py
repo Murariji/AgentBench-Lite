@@ -20,7 +20,8 @@ import time
 from collections.abc import Callable, Iterator
 from pathlib import Path as FilePath
 
-from fastapi import Depends, FastAPI, Path, Query, Request, Response
+from fastapi import Body, Depends, FastAPI, Path, Query, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -28,8 +29,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from agentbench.analysis import analyze_run, analyze_suite
 from agentbench.api.jobs import JobManager, RunInProgressError
+from agentbench.api.middleware import MAX_BODY_BYTES, BodySizeLimit
 from agentbench.api.schemas import (CompareOut, ErrorResponse, EstimateOut, FailuresOut, HealthOut, HistoryPage,
-                                    JobOut, JobPage, MeasureGroupOut, MeasureOut, Pagination, RateOut,
+                                    IndexOut, JobOut, JobPage, MeasureGroupOut, MeasureOut, Pagination, RateOut,
                                     RegisteredSuiteOut, RegistrationOut, RunDetailOut, RunIn, RunSummaryOut,
                                     SuiteDetailOut, SuitePage, SuiteSummaryOut, TaskOutcomesOut)
 from agentbench.datasets import DEFAULT_DB_PATH
@@ -51,7 +53,67 @@ MAX_LIMIT = 100
 MAX_COMPARE = 5
 JOB_ID = r"^[0-9a-f]{4,32}$"
 DEFAULT_MAX_REAL_BUDGET = 100
-ERRORS = {code: {"model": ErrorResponse} for code in (403, 404, 409, 422)}
+API_VERSION = "0.9.3"
+# The React dev server (Phase 10) runs here. Only these origins may READ responses in a browser.
+DEFAULT_CORS_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
+_ORIGIN = re.compile(r"^https?://[A-Za-z0-9.\-]+(:\d{1,5})?$")      # scheme://host[:port], nothing else
+
+
+def validate_origins(origins) -> list[str]:
+    """Explicit origins only: never '*', no paths, no trailing slash."""
+    result = []
+    for origin in origins:
+        if origin == "*" or not _ORIGIN.match(origin):
+            raise ValueError(f"invalid CORS origin {origin!r}: use an exact origin like http://localhost:5173 "
+                             "(no '*', no path)")
+        result.append(origin)
+    return result
+
+
+def check_startup(db_path) -> str | None:
+    """Can the results database be opened (and, if needed, upgraded)? None = yes, else a clear message."""
+    try:
+        ResultStore(db_path).close()
+    except StorageError as exc:
+        return f"cannot use the results database {db_path}: {exc}"
+    except OSError as exc:
+        return f"cannot open the results database {db_path}: {exc}"
+    return None
+
+
+# OpenAPI examples. They only PRE-FILL the /docs form; nothing is sent until a person clicks Execute, and
+# the server checks every gate exactly as for any other client - Swagger cannot bypass them.
+RUN_EXAMPLES = {
+    "scripted": {"summary": "Scripted run: careful agent on shop-hard (free, always allowed)",
+                 "description": "A SCRIPTED test agent (fixed answers, not AI). No model is called.",
+                 "value": {"agent": "careful", "suite": "shop-hard"}},
+    "scripted_subset": {"summary": "Scripted run: sloppy agent on two tasks (free)",
+                        "description": "Falls into its planted traps on purpose: useful to see failure analysis.",
+                        "value": {"agent": "sloppy", "suite": "shop-hard", "tasks": ["hard-001", "hard-007"]}},
+    "real_pilot_gated": {
+        "summary": "REAL Gemini run - only if the server was started with --allow-real-runs (uses free quota)",
+        "description": "Sends REAL requests to Gemini if, and only if, ALL gates pass on the server: started "
+                       "with --allow-real-runs, confirm=true, a budget within --max-real-budget, and a passing "
+                       "registration guard. Otherwise the server answers 403/422/409 and sends nothing. "
+                       "Try POST /estimates first.",
+        "value": {"agent": "gemini", "suite": "shop-hard", "tasks": ["hard-001", "hard-007"],
+                  "budget": 25, "confirm": True}},
+}
+# Every error uses ErrorResponse. Each endpoint documents exactly the codes it can really return.
+_ERROR_TEXT = {
+    403: "Real Gemini runs are disabled on this server (start it with --allow-real-runs).",
+    404: "Unknown suite, run, task or job.",
+    409: "Conflict: ambiguous short id, incompatible comparison, not analysable, registration mismatch, "
+         "or a run already in progress.",
+    413: "The request body is larger than 64 KB.",
+    422: "Invalid input (wrong format, out of range, a missing safety confirmation or budget).",
+    500: "Unexpected server error (only its type is reported - never a traceback or a secret).",
+    503: "The results database cannot be used.",
+}
+
+
+def errors(*codes: int) -> dict:
+    return {code: {"model": ErrorResponse, "description": _ERROR_TEXT[code]} for code in (*codes, 500)}
 
 
 def default_real_llm_factory():
@@ -108,14 +170,16 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
                max_real_budget: int = DEFAULT_MAX_REAL_BUDGET,
                real_llm_factory: Callable[[], tuple] = default_real_llm_factory,
                shop_db_path: str | FilePath = DEFAULT_DB_PATH, recovery_dir: str | FilePath = RESULTS_DIR,
-               sleep: Callable[[float], None] = time.sleep) -> FastAPI:
+               sleep: Callable[[float], None] = time.sleep,
+               cors_origins=DEFAULT_CORS_ORIGINS, max_body_bytes: int = MAX_BODY_BYTES) -> FastAPI:
     """Everything the app depends on is injected: tests pass a temporary database, a fake "real" LLM
     factory and a no-op sleep, so no real client is ever built and nothing waits."""
     if max_real_budget < 1:
         raise ValueError("max_real_budget must be at least 1")
+    origins = validate_origins(cors_origins)
     app = FastAPI(
         title="AgentBench-Lite API",
-        version="0.9.2",
+        version=API_VERSION,
         description="Stored benchmark runs, traces, failure analysis and comparisons, plus background runs "
                     "(one at a time). Scripted runs are fixed test fixtures, not AI. Real Gemini runs are OFF "
                     "unless the server is started with --allow-real-runs. Local use only (127.0.0.1).",
@@ -124,6 +188,19 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
     app.state.allow_real_runs = allow_real_runs
     app.state.max_real_budget = max_real_budget
     app.state.jobs = JobManager(results_db=FilePath(db_path), recovery_dir=FilePath(recovery_dir), sleep=sleep)
+    app.state.cors_origins = origins
+
+    # ---------- middleware (outermost last): CORS wraps the body limit, so even a 413 carries CORS headers --
+    app.add_middleware(BodySizeLimit, limit=max_body_bytes)
+    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"],
+                       allow_headers=["Content-Type"], allow_credentials=False, max_age=600)
+
+    @app.middleware("http")
+    async def _no_cache_for_live_data(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith(("/runs", "/estimates")):
+            response.headers["Cache-Control"] = "no-store"      # a progress bar must never show a cached status
+        return response
 
     # ---------- dependency injection: one ResultStore per request ----------------------------
     def get_store() -> Iterator[ResultStore]:
@@ -165,17 +242,22 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
         return _error(500, "internal_error", f"unexpected server error ({type(exc).__name__})")
 
     # ---------- endpoints ------------------------------------------------------------------------
-    @app.get("/health", response_model=HealthOut, tags=["meta"])
+    @app.get("/", response_model=IndexOut, responses=errors(), tags=["meta"])
+    def index() -> dict:
+        return {"name": "AgentBench-Lite API", "version": API_VERSION, "docs": "/docs", "health": "/health",
+                "real_runs_enabled": app.state.allow_real_runs, "local_only": "127.0.0.1"}
+
+    @app.get("/health", response_model=HealthOut, responses=errors(503), tags=["meta"])
     def health(store: ResultStore = Depends(get_store)) -> HealthOut:
         return HealthOut(status="ok", schema_version=SCHEMA_VERSION, real_runs_enabled=app.state.allow_real_runs)
 
-    @app.get("/registrations", response_model=list[RegisteredSuiteOut], tags=["meta"])
+    @app.get("/registrations", response_model=list[RegisteredSuiteOut], responses=errors(), tags=["meta"])
     def registrations() -> list[RegisteredSuiteOut]:
         return [RegisteredSuiteOut(**{k: r.get(k) for k in RegisteredSuiteOut.model_fields if k != "tasks"},
                                    tasks=[t["id"] for t in r["tasks"]])
                 for name in SUITES for r in registrations_for(name)]
 
-    @app.get("/suites", response_model=SuitePage, tags=["suites"])
+    @app.get("/suites", response_model=SuitePage, responses=errors(422, 503), tags=["suites"])
     def list_suites(real_only: bool = False,
                     limit: int = Query(20, ge=1, le=MAX_LIMIT), offset: int = Query(0, ge=0),
                     store: ResultStore = Depends(get_store)) -> SuitePage:
@@ -186,7 +268,8 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
             for row in rows]
         return SuitePage(items=items, pagination=pagination)
 
-    @app.get("/suites/{suite_id}", response_model=SuiteDetailOut, responses=ERRORS, tags=["suites"])
+    @app.get("/suites/{suite_id}", response_model=SuiteDetailOut, responses=errors(404, 409, 422, 503),
+             tags=["suites"])
     def get_suite(suite_id: str = Path(pattern=SUITE_ID),
                   store: ResultStore = Depends(get_store)) -> SuiteDetailOut:
         s = load_suite(store, suite_id)
@@ -206,7 +289,8 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
             estimated_requests=s.estimated_requests, stop_reason=s.stop_reason, complete=m.complete, metrics=m,
             registration=_registration(s), runs=runs, skipped=s.skipped)
 
-    @app.get("/suites/{suite_id}/runs/{run_id}", response_model=RunDetailOut, responses=ERRORS, tags=["suites"])
+    @app.get("/suites/{suite_id}/runs/{run_id}", response_model=RunDetailOut,
+             responses=errors(404, 409, 422, 503), tags=["suites"])
     def get_run(suite_id: str = Path(pattern=SUITE_ID), run_id: str = Path(pattern=SUITE_ID),
                 store: ResultStore = Depends(get_store)) -> RunDetailOut:
         s = load_suite(store, suite_id)
@@ -221,7 +305,8 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
         return RunDetailOut(suite_id=s.suite_id, record=record,
                             analysis=analyze_run(task, record) if task else None)
 
-    @app.get("/suites/{suite_id}/failures", response_model=FailuresOut, responses=ERRORS, tags=["suites"])
+    @app.get("/suites/{suite_id}/failures", response_model=FailuresOut, responses=errors(404, 409, 422, 503),
+             tags=["suites"])
     def get_failures(suite_id: str = Path(pattern=SUITE_ID),
                      store: ResultStore = Depends(get_store)) -> FailuresOut:
         s = load_suite(store, suite_id)
@@ -231,7 +316,8 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
         return FailuresOut(note="Rule-based, from the stored trace: likely patterns, not the model's reasoning. "
                                 "Infrastructure errors are not agent failures.", analysis=analyze_suite(s))
 
-    @app.get("/tasks/{task_id}/history", response_model=HistoryPage, responses=ERRORS, tags=["tasks"])
+    @app.get("/tasks/{task_id}/history", response_model=HistoryPage, responses=errors(404, 422, 503),
+             tags=["tasks"])
     def task_history(task_id: str = Path(pattern=TASK_ID),
                      limit: int = Query(20, ge=1, le=MAX_LIMIT), offset: int = Query(0, ge=0),
                      store: ResultStore = Depends(get_store)) -> HistoryPage:
@@ -239,7 +325,8 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
         items, pagination = _paginate(store.task_history(task_id), limit, offset)
         return HistoryPage(task_id=task_id, items=items, pagination=pagination)
 
-    @app.get("/tasks/{task_id}/measure", response_model=MeasureOut, responses=ERRORS, tags=["tasks"])
+    @app.get("/tasks/{task_id}/measure", response_model=MeasureOut, responses=errors(404, 422, 503),
+             tags=["tasks"])
     def task_measure(task_id: str = Path(pattern=TASK_ID),
                      store: ResultStore = Depends(get_store)) -> MeasureOut:
         _known_task(store, task_id)
@@ -259,7 +346,7 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
             limitations=[f"Tiny samples ({sizes}): exploratory evidence, not statistical proof.",
                          *MEASURE_LIMITATIONS])
 
-    @app.get("/compare", response_model=CompareOut, responses=ERRORS, tags=["suites"])
+    @app.get("/compare", response_model=CompareOut, responses=errors(404, 409, 422, 503), tags=["suites"])
     def compare_suites(ids: list[str] = Query(..., description=f"2 to {MAX_COMPARE} suite ids (repeat ?ids=)"),
                        store: ResultStore = Depends(get_store)) -> CompareOut:
         bad = [i for i in ids if not re.fullmatch(SUITE_ID, i)]
@@ -316,8 +403,8 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
             problems.append((409, "registration_mismatch", plan.guard.line()))
         return problems
 
-    @app.post("/estimates", response_model=EstimateOut, responses=ERRORS, tags=["runs"])
-    def estimate(body: RunIn) -> EstimateOut:
+    @app.post("/estimates", response_model=EstimateOut, responses=errors(413, 422), tags=["runs"])
+    def estimate(body: RunIn = Body(openapi_examples=RUN_EXAMPLES)) -> EstimateOut:
         """What a run would cost and whether it would be allowed. Never sends anything."""
         plan = make_plan(body)
         g = plan.guard
@@ -334,8 +421,9 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
             real_runs_enabled=app.state.allow_real_runs, allowed=not gate_failures(body, plan),
             reasons=[message for _, _, message in gate_failures(body, plan)])
 
-    @app.post("/runs", status_code=202, response_model=JobOut, responses=ERRORS, tags=["runs"])
-    def start_run(body: RunIn, response: Response) -> JobOut:
+    @app.post("/runs", status_code=202, response_model=JobOut, responses=errors(403, 409, 413, 422),
+              tags=["runs"])
+    def start_run(response: Response, body: RunIn = Body(openapi_examples=RUN_EXAMPLES)) -> JobOut:
         """Start a run in the background (one at a time). Poll GET /runs/{job_id} for progress."""
         plan = make_plan(body)
         failures = gate_failures(body, plan)
@@ -356,13 +444,13 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
         response.headers["Location"] = f"/runs/{job.id}"
         return JobOut(**app.state.jobs.get(job.id))
 
-    @app.get("/runs", response_model=JobPage, tags=["runs"])
+    @app.get("/runs", response_model=JobPage, responses=errors(422), tags=["runs"])
     def list_runs(limit: int = Query(20, ge=1, le=MAX_LIMIT), offset: int = Query(0, ge=0)) -> JobPage:
         """Jobs started since THIS server started (job status is not kept across restarts)."""
         items, pagination = _paginate(app.state.jobs.list(), limit, offset)
         return JobPage(items=[JobOut(**j) for j in items], pagination=pagination)
 
-    @app.get("/runs/{job_id}", response_model=JobOut, responses=ERRORS, tags=["runs"])
+    @app.get("/runs/{job_id}", response_model=JobOut, responses=errors(404, 422), tags=["runs"])
     def get_run_job(job_id: str = Path(pattern=JOB_ID)) -> JobOut:
         job = app.state.jobs.get(job_id)
         if job is None:
