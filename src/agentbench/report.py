@@ -172,20 +172,28 @@ def export_json(suite: SuiteResult, directory: str | Path = RESULTS_DIR) -> Path
     """Write the full suite result (every run, trace, check, timestamp, config) + metrics.
 
     Never overwrites: the name includes a timestamp, and the file is created with mode "x".
+    If that name is already taken (two exports within the same clock tick), "_2", "_3", ...
+    is added instead of failing.
     """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    path = directory / f"{_slug(suite.suite_name)}_{_slug(suite.config.name)}_{stamp}.json"
+    base = f"{_slug(suite.suite_name)}_{_slug(suite.config.name)}_{stamp}"
     payload = {
         "format": EXPORT_FORMAT,
         "suite_result": json.loads(suite.model_dump_json()),
         "metrics": json.loads(compute_metrics(suite).model_dump_json()),  # derived, for convenience
         "tasks_fingerprint": suite.tasks_fingerprint,
     }
-    with open(path, "x", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, ensure_ascii=False)
-    return path
+    for attempt in range(1, 1000):
+        path = directory / (f"{base}.json" if attempt == 1 else f"{base}_{attempt}.json")
+        try:
+            with open(path, "x", encoding="utf-8") as f:  # "x" = create only, never overwrite
+                json.dump(payload, f, indent=2, ensure_ascii=False)
+            return path
+        except FileExistsError:
+            continue  # taken: try the next suffix
+    raise FileExistsError(f"could not find a free file name for {base}.json in {directory}")
 
 
 def load_json(path: str | Path) -> SuiteResult:

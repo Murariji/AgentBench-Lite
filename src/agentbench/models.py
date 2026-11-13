@@ -235,6 +235,9 @@ class SuiteResult(_BaseModel):
     """Everything about one suite run. Nothing is discarded: every scheduled run is
     either a record (passed / failed / infra_error) or a skipped entry."""
 
+    # Identifies ONE whole benchmark execution (run_id identifies one task execution inside it,
+    # task_id identifies the benchmark task itself).
+    suite_id: str = Field(default_factory=_new_id, min_length=1)
     suite_name: str = Field(min_length=1)
     config: AgentConfig
     task_ids: list[str] = Field(min_length=1)   # the scheduled tasks, in order
@@ -252,6 +255,17 @@ class SuiteResult(_BaseModel):
     request_budget: int | None = Field(default=None, ge=1)
     estimated_requests: int | None = Field(default=None, ge=0)
     stop_reason: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _stable_id_for_old_exports(cls, data: Any) -> Any:
+        # JSON exported before suite_id existed: derive the id from the run ids (which are
+        # unique), so importing the same old file twice gives the SAME id, never a new one.
+        if isinstance(data, dict) and "suite_id" not in data and data.get("records"):
+            run_ids = [r.run.run_id if isinstance(r, RunRecord) else r["run"]["run_id"]
+                       for r in data["records"]]
+            data = {**data, "suite_id": hashlib.sha256("|".join(run_ids).encode()).hexdigest()[:32]}
+        return data
 
     @model_validator(mode="after")
     def _tasks_match_ids(self) -> "SuiteResult":

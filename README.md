@@ -75,8 +75,11 @@ marked skipped; the suite is reported as incomplete, never as failed by the agen
 **First result** (`gemini-3.5-flash-lite`, 1 repeat): **10/10 passed** (easy 2/2, medium 4/4, hard 4/4),
 57 requests, avg 5.7 steps and ~2.6k input tokens per task, 351 s in total. Two tool errors (the model
 tried `round(...)` and `datetime(...)` in the calculator) were recovered by the model itself.
-One run with no repeats does not measure consistency (pass^k), and a perfect score suggests the suite
-needs harder tasks to separate configurations. Both are planned.
+**Reliability run** (3 repeats): **30/30, pass@3 10/10, pass^3 10/10**, 170 requests. The model gave
+identical answers in every repeat. Findings: two tasks needed a retried request, and shop-010 used all
+8 allowed steps in 2 of 3 runs because the model kept trying `round()` in the calculator. A perfect
+score also means this suite is too easy to separate configurations for this model, so harder tasks
+are a planned next step.
 
 ```powershell
 python scripts/run_shop_task.py             # scripted agent solves shop-003  -> PASSED

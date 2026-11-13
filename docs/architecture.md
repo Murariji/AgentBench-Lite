@@ -4,8 +4,9 @@
 > **Models** (`src/agentbench/models.py`), **Tools** (`src/agentbench/tools/`) and the
 > **LLM layer** (`src/agentbench/llm/`) the **Runner** (`src/agentbench/runner.py`) and
 > **Evaluators** (`src/agentbench/evaluators.py`), the **shop dataset** (`src/agentbench/datasets/`)
-> the read-only **SQL tools** (`src/agentbench/tools/sql.py`) and the **shop suite**
-> (`src/agentbench/suites/`). Update this file whenever the design changes.
+> the read-only **SQL tools** (`src/agentbench/tools/sql.py`), the **shop suite**
+> (`src/agentbench/suites/`), the **benchmark runner** and **metrics**, and **result storage**
+> (`src/agentbench/storage.py`). Update this file whenever the design changes.
 
 ## Platform layers
 
@@ -33,8 +34,8 @@
 - The framework works on its own (importable Python); API and dashboard are optional layers on top.
 - The dashboard talks only to the API — never to the database or the framework directly.
 - Pydantic models are the shared data shapes: the API returns them as JSON to the dashboard.
-- Long benchmark runs: `POST /runs` returns a `run_id` immediately; the dashboard polls
-  `GET /runs/{run_id}` until the run is finished.
+- Long benchmark runs: `POST /suites` returns a `suite_id` immediately; the dashboard polls
+  `GET /suites/{suite_id}` until the run is finished.
 
 ## The core loop
 
@@ -79,3 +80,32 @@ Evaluators decide **whether it was right** (`EvaluationResult`, list of `Check`s
    specific vendor SDK. See [ADR 0001](decisions/0001-provider-independent-llm.md).
 3. **Deterministic tests.** Unit tests use `FakeLLM`; no network or API key required.
 4. **Minimal dependencies.** Add a library only when a phase needs it.
+
+## Result storage (Phase 7)
+
+Two separate SQLite files, both git-ignored:
+
+| File | Contents | Who reads it |
+|---|---|---|
+| `data/shop.db` | customers, products, orders (the benchmark's data) | the agent, read-only, through the SQL tools |
+| `data/results.db` | suite runs, task versions, run records, traces, checks, skipped runs | `ResultStore` only |
+
+The agent must never see results or answers, so the two are never the same file.
+
+```
+suite_runs ─┬─< suite_tasks >── task_versions     one row per distinct task definition (sha256)
+            ├─< run_records ─┬─< steps            trace; tool call = optional columns, args = JSON
+            │                └─< checks           evaluation; none for infrastructure errors
+            └─< skipped_runs                      runs that never happened, with the reason
+```
+
+- **IDs:** `suite_id` = one benchmark execution, `run_id` = one task execution (primary key of
+  `run_records`), `task_id` = the benchmark task. A task *version* is identified by `task_hash`.
+- **History stays interpretable:** each suite links to the exact task definitions it used, stored once
+  per distinct content. Editing a prompt or tolerance creates a new version; old runs keep theirs.
+- **Integrity:** foreign keys on every connection, primary/unique keys, CHECK rules, every value a `?`
+  parameter, and a whole suite saved in one transaction (all or nothing).
+- **Schema version:** `PRAGMA user_version` (currently 1). A file with another version, or tables
+  without a version, is refused rather than misread.
+- **Persistence is not execution:** a failed save raises `StorageError` and never changes the benchmark
+  result, which stays in memory and can still be exported to JSON.

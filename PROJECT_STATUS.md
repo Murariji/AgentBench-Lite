@@ -15,7 +15,43 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 7 — Step 7.1 Result storage (save/load): ✅ complete** (tests: **304 passed**; 26 new). Step 7.2 (queries, auto-save, `scripts/results.py`) waits for approval.
+- `src/agentbench/storage.py`: `ResultStore(path=data/results.db)` — the only code that talks to the
+  results DB (repository pattern). `save(suite) -> suite_id` in ONE transaction (`BEGIN IMMEDIATE` …
+  `COMMIT`, `ROLLBACK` on any failure → `StorageError`, in-memory result untouched), `load(suite_id)`
+  (lossless: `load(save(s)) == s`, validators run again), `exists()`. Errors: `StorageError`,
+  `DuplicateSuiteError`, `SuiteNotFoundError`, `SchemaVersionError`.
+- Schema v1 (`PRAGMA user_version = 1`), 7 tables: `suite_runs` (config as columns), `task_versions`
+  (immutable task snapshots keyed by sha256 of the full definition; shared across suites, an edited task
+  becomes a new row), `suite_tasks` (which version each suite scheduled, in order), `run_records`
+  (PK `run_id`; FK (suite_id, task_id) → suite_tasks; UNIQUE (suite_id, task_id, repeat_index)),
+  `steps` (tool call as optional columns, arguments as JSON), `checks`, `skipped_runs` (own table,
+  mirrors `SkippedRun`). Indexes on `suite_runs.started_at`, `run_records.task_id`,
+  `task_versions.task_id`. Foreign keys ON per connection; every value a `?` parameter.
+- Opening: version 0 + empty file → create schema and version in one transaction; another version or a
+  non-AgentBench file → `SchemaVersionError`.
+- `SuiteResult.suite_id` (new, 32 hex). Old JSON exports without it get a stable id derived from their
+  run ids, so the same file always maps to the same suite. Nested task ids that disagree are refused.
+- Verified: the real 30-run Gemini export saved and loaded back identical (1 suite, 10 task versions,
+  30 records, 165 steps, 90 checks).
+- Fix (bug from Step 6.2, found by the user's test run): two JSON exports within the same clock tick got
+  the same file name; mode "x" refused correctly but `export_json` crashed. Now it adds `_2`, `_3`, ...
+  New test freezes the clock to force the collision (no longer timing-dependent). Tests: 304.
+- Teaching demo: `docs/learning/sqlite_basics_demo.py` (students and marks: tables, JOIN, GROUP BY,
+  foreign key, rollback, SQL injection, user_version). Notes: `docs/learning/phase-7-notes.md`.
+
 **Phase 6 — Benchmark runner: ✅ complete** (Steps 6.1, 6.2, 6.3).
+
+**Reliability run** (user ran, `gemini-3.5-flash-lite`, **3 repeats**): **30/30 passed, pass@3 10/10,
+pass^3 10/10**; 170 requests (estimate 150, budget 200), 1,113 s, avg 5.5 steps / 5.7 LLM calls,
+2,461 input tokens. Findings from the saved JSON:
+- Very consistent: identical final answers and nearly identical tool sequences in every repeat.
+- shop-009 (all 3) and shop-010 (2 of 3) made one more LLM call than steps: a request was retried
+  (12 s gap instead of 6 s). The retried error is NOT recorded anywhere — a tracing gap.
+- shop-010 used 8 of 8 steps in 2 of 3 runs; both times the model tried `round(16107.32)`, which the
+  safe calculator rejects (a tool-usability finding), then recovered.
+- Ceiling effect confirmed: the suite cannot separate configs for this model; harder tasks needed.
+- The 5-requests-per-run estimate is low (actual 5.7).
 
 **Step 6.3 Free-tier safety for real runs: ✅ complete.** Tests: **278 passed** (user-reported; 14 new).
 - `src/agentbench/llm/pacing.py`: `Pacer` (≥ N s between request starts, shared by the whole suite),
@@ -220,6 +256,8 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 | Result export | JSON with full tasks, never overwrite; metrics recomputed on load | Free re-grading; files aren't trusted |
 | Scripted agents | Careful/sloppy FakeLLM scripts, always labelled SCRIPTED | Test the pipeline for ₹0 without faking AI results |
 | Real-run safety | Hard per-request cap + circuit breaker + `--yes` after an estimate | A free quota can never be overspent by accident |
+| Result storage | Built-in sqlite3, normalized tables, repository class, one transaction per suite | No dependency, real SQL; nothing half-saved |
+| Task history | Content-hashed immutable task versions per suite | Old results stay interpretable after task edits |
 | Run vs. eval | `RunResult` ≠ `EvaluationResult` | What happened vs. was it correct (Phase 5) |
 
 ## Working agreements
@@ -248,5 +286,8 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 7 — SQLite storage for suite runs, records, traces and evaluations (the future dashboard's
-data source). Plan to be presented; waiting for user approval.
+Phase 7, Step 7.2 — `list_suites()` (newest first, pass counts by SQL `GROUP BY`, checked against
+`compute_metrics()`), `task_history(task_id)`, automatic save from `run_benchmark.py` (a failed save
+is reported separately; the result is kept and can be exported), `scripts/results.py
+list|show|compare|import`. Candidates noted: record retried errors in traces, calculator `round()`,
+harder tasks, estimate 6 requests per run. Waiting for user approval.

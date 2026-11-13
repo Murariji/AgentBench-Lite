@@ -147,6 +147,23 @@ def test_export_never_overwrites(sloppy, tmp_path):
     assert first != second and first.exists() and second.exists()
 
 
+def test_export_in_the_same_clock_tick_gets_a_suffix(sloppy, tmp_path, monkeypatch):
+    # Force the collision that made the test above flaky on Windows: a frozen clock.
+    import agentbench.report as report
+    from datetime import datetime, timezone
+
+    class FrozenClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 11, 13, 6, 37, 16, 779180, tzinfo=timezone.utc)
+
+    monkeypatch.setattr(report, "datetime", FrozenClock)
+    first, second, third = (export_json(sloppy, tmp_path) for _ in range(3))
+    assert first.name == "shop_sloppy-script_20261113T063716779180Z.json"
+    assert second.name.endswith("Z_2.json") and third.name.endswith("Z_3.json")
+    assert load_json(first) == load_json(second) == load_json(third)    # nothing overwritten or lost
+
+
 def test_load_rejects_foreign_json(tmp_path):
     bad = tmp_path / "x.json"
     bad.write_text('{"hello": 1}', encoding="utf-8")
