@@ -96,3 +96,27 @@ SHOP_HARD_TRAPS: dict[str, str] = {
     "hard-007": "Sunday / Tuesday (%w off by one)", "hard-008": "Kolkata / Jaipur / Chennai (tie ignored)",
     "hard-009": "28 (order lines) / 104 (units)",
 }
+
+# Grading probes (Step A.4a): answers whose verdict is KNOWN. The registration guard runs them through
+# today's evaluator before a real run: if any verdict changed, the evaluator's rules (or a tolerance)
+# changed since registration. They cover these known cases only - not every possible change.
+SHOP_HARD_ACCEPTED: list[tuple[str, str]] = [
+    ("hard-001", "10995.5"), ("hard-001", "₹10,995.50"), ("hard-001", "10995.50"),
+    ("hard-002", "5"),
+    ("hard-003", "70.0"), ("hard-003", "70"), ("hard-003", "70%"), ("hard-003", "70.0 %"),
+    ("hard-004", "7.68"), ("hard-004", "7.680"),
+    ("hard-005", "56.3"), ("hard-005", "56.3%"), ("hard-005", "56.34"),
+    ("hard-006", "April"), ("hard-006", "April 2026"),
+    ("hard-007", "Monday"), ("hard-008", "Bengaluru"), ("hard-009", "21"),
+]
+SHOP_HARD_REJECTED: list[tuple[str, str]] = [
+    ("hard-001", "16107"), ("hard-001", "16107.32"), ("hard-001", "10995"), ("hard-001", "10996"),
+    ("hard-002", "15"), ("hard-002", "7"),
+    ("hard-003", "77.8"), ("hard-003", "77.78"),
+    ("hard-004", "3.12"), ("hard-004", "2.46"), ("hard-004", "7.7"),
+    ("hard-005", "29.7"), ("hard-005", "33.3"), ("hard-005", "56"), ("hard-005", "56.4"),
+    ("hard-006", "January"), ("hard-006", "June"), ("hard-006", "May"),
+    ("hard-007", "Sunday"), ("hard-007", "Tuesday"),
+    ("hard-008", "Kolkata"), ("hard-008", "Jaipur"), ("hard-008", "Chennai"),
+    ("hard-009", "28"), ("hard-009", "104"),
+]

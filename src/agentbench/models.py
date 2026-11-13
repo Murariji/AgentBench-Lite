@@ -244,6 +244,13 @@ class AgentConfig(_BaseModel):
         return self
 
     @property
+    def config_fingerprint(self) -> str:
+        """Everything that defines the agent's behaviour (NOT the name, which is only a label)."""
+        data = {"provider": self.provider, "model": self.model, "prompt_hash": self.prompt_hash,
+                "max_attempts": self.max_attempts, "min_interval_seconds": self.min_interval_seconds}
+        return hashlib.sha256(canonical_json(data).encode("utf-8")).hexdigest()[:12]
+
+    @property
     def is_scripted(self) -> bool:
         return self.provider == "fake"
 

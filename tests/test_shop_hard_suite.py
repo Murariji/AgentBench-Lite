@@ -24,7 +24,7 @@ from agentbench.evaluators import evaluate
 from agentbench.models import RunResult, Step, ToolCall, Trace
 from agentbench.suites import SHOP_HARD_TASKS, SHOP_TASKS, SUITES, get_task, shop_registry
 from agentbench.suites.shop_agents import HARD_SLOPPY_TRAPS, scripted_agent, scripted_config
-from agentbench.suites.shop_hard import SHOP_HARD_TRAPS
+from agentbench.suites.shop_hard import SHOP_HARD_ACCEPTED, SHOP_HARD_REJECTED, SHOP_HARD_TRAPS
 from agentbench.tools import ReadOnlySQLite
 
 EXPECTED = {"hard-001": "10995.5", "hard-002": "5", "hard-003": "70.0", "hard-004": "7.68", "hard-005": "56.3",
@@ -151,26 +151,8 @@ def fake_result(task, answer: str) -> RunResult:
                      duration_seconds=0.1)
 
 
-ACCEPTED = [
-    ("hard-001", "10995.5"), ("hard-001", "₹10,995.50"), ("hard-001", "10995.50"),
-    ("hard-002", "5"),
-    ("hard-003", "70.0"), ("hard-003", "70"), ("hard-003", "70%"), ("hard-003", "70.0 %"),
-    ("hard-004", "7.68"), ("hard-004", "7.680"),
-    ("hard-005", "56.3"), ("hard-005", "56.3%"), ("hard-005", "56.34"),     # more precise is still right
-    ("hard-006", "April"), ("hard-006", "April 2026"),
-    ("hard-007", "Monday"), ("hard-008", "Bengaluru"), ("hard-009", "21"),
-]
-TRAPS = [
-    ("hard-001", "16107"), ("hard-001", "16107.32"), ("hard-001", "10995"), ("hard-001", "10996"),
-    ("hard-002", "15"), ("hard-002", "7"),
-    ("hard-003", "77.8"), ("hard-003", "77.78"),
-    ("hard-004", "3.12"), ("hard-004", "2.46"), ("hard-004", "7.7"),        # 7.7: not two decimal places
-    ("hard-005", "29.7"), ("hard-005", "33.3"), ("hard-005", "56"), ("hard-005", "56.4"),
-    ("hard-006", "January"), ("hard-006", "June"), ("hard-006", "May"),
-    ("hard-007", "Sunday"), ("hard-007", "Tuesday"),
-    ("hard-008", "Kolkata"), ("hard-008", "Jaipur"), ("hard-008", "Chennai"),
-    ("hard-009", "28"), ("hard-009", "104"),
-]
+ACCEPTED = SHOP_HARD_ACCEPTED   # one list, shared with the registration guard (A.4a)
+TRAPS = SHOP_HARD_REJECTED
 
 
 @pytest.mark.parametrize("task_id, answer", ACCEPTED)

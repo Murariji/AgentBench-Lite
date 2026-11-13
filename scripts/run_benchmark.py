@@ -26,7 +26,8 @@ from agentbench.models import AgentConfig
 from agentbench.report import compare, export_json, format_report
 from agentbench.runner import DEFAULT_SYSTEM_PROMPT
 from agentbench.storage import DEFAULT_RESULTS_DB, save_with_recovery
-from agentbench.suites import SUITES, shop_registry
+from agentbench.registration import check_suite
+from agentbench.suites import GRADING_PROBES, SUITES, shop_registry
 from agentbench.suites.shop_agents import scripted_agent, scripted_config
 from agentbench.tools import ReadOnlySQLite
 
@@ -82,21 +83,35 @@ if __name__ == "__main__":
         parser.error("--budget must be at least 1")
     real = args.agent == "gemini" and not args.compare
 
+    if not DEFAULT_DB_PATH.exists():
+        build_shop_db(DEFAULT_DB_PATH)  # only builds when missing; never overwrites (offline, no API)
+    dataset = f"{DEFAULT_DB_PATH.name} sha256:{hashlib.sha256(DEFAULT_DB_PATH.read_bytes()).hexdigest()[:12]}"
+
+    # Registration guard (Step A.4a): BEFORE any request, check that tasks, expected answers, grading
+    # (incl. probe answers through today's evaluator), tools and dataset are exactly what was registered.
+    with ReadOnlySQLite(DEFAULT_DB_PATH) as db:
+        tool_specs = shop_registry(db).specs()
+    guard = check_suite(args.suite, tasks, tool_specs, dataset, grading=GRADING_PROBES.get(args.suite))
+
     if real:
         # The estimate comes FIRST; without --yes we stop here with zero API calls.
         estimate = estimate_requests(tasks, gemini_config(), repeats=args.repeats, budget=args.budget)
         print("=== REAL Gemini run (uses free-tier quota) ===")
         print(f"Suite      : {args.suite}")
         print(f"Tasks      : {', '.join(t.id for t in tasks)}")
+        print(f"Registered : {guard.line()}")
         print(estimate.describe())
         print(f"Pacing     : at least {GEMINI_PACING_SECONDS:.0f} s between requests")
+        if guard.blocks_real_runs:
+            print("\nREFUSED: this suite differs from its registration, so a real run would not measure the "
+                  "registered benchmark. Nothing was sent. Register a new version instead "
+                  "(python scripts/register_suite.py <suite> --version N).")
+            raise SystemExit(1)
         if not args.yes:
             print("\nNothing was sent. Add --yes to start this run.")
             raise SystemExit(0)
-
-    if not DEFAULT_DB_PATH.exists():
-        build_shop_db(DEFAULT_DB_PATH)  # only builds when missing; never overwrites
-    dataset = f"{DEFAULT_DB_PATH.name} sha256:{hashlib.sha256(DEFAULT_DB_PATH.read_bytes()).hexdigest()[:12]}"
+    elif guard.blocks_real_runs:
+        print(f"WARNING (scripted run, continuing): {guard.line()}")
 
     with ReadOnlySQLite(DEFAULT_DB_PATH) as db:
         tools = shop_registry(db)

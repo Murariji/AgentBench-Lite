@@ -178,3 +178,35 @@ on any difference; a change = a new version, never an edit.
 13. Why does hard-004 use ±0.005 but hard-003 ±0.05?
 14. Why must the registration be committed before the first real run?
 15. Why is "unclassified" the right result for the sloppy hard-008 answer?
+
+## Step A.4a — the registration guard
+
+**Why:** "pre-registered" was a promise; nothing CHECKED it at run time. Now every run is compared
+with `shop-hard.v1.json` before a single request is sent.
+
+| Checked | How |
+|---|---|
+| tasks, answers, tolerances, tools allowed/required, max_steps, order | tasks fingerprint + per-task hash + each grading field |
+| tools | tools fingerprint (calculator v2, …) |
+| dataset | shop.db fingerprint |
+| evaluator rules | 43 grading probes (18 must pass, 25 traps must fail) through TODAY's evaluator |
+
+**Why probes for the evaluator?** v1 has no evaluator version, and v1 must not be edited. Behaviour can
+still be checked: if a known trap suddenly passes, the grading changed. Limit: known cases only.
+
+**Results:** `matches`, `SUBSET … NOT a full-suite result` (the pilot), `not registered` (shop), or
+`DIFFERS` → a real run is refused ("Nothing was sent"). A tolerance edit is caught twice: by the task
+definition AND by a probe ("'7.7' is now accepted").
+
+**Reproducibility line** in every report: provider, model id (as requested — Google can update the model
+behind an id), start time, config / tools / tasks / dataset fingerprints. Runs on different days are
+separate experiments, and `compare` says so.
+
+**Partial runs:** an incomplete report lists `Completed :` and `Not done :` task by task; a cut run is
+never a wrong answer. The budget counts every actual request, retries included.
+
+## Self-check (A.4a)
+16. Why can't the registration store an evaluator version now, and what replaces it?
+17. The pilot runs 2 of 9 tasks. Why must its report never say "shop-hard: 2/2"?
+18. A retry happens during the pilot. Does it count against the 25-request budget? Why?
+19. Why is the model id recorded "as requested", and what can still change behind it?

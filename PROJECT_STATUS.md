@@ -15,6 +15,29 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Benchmark v2 — Step A.4a Registration guard: ✅ complete (offline)** (tests: 580 passed, 0 failed,
+0 skipped when run by Claude — user to confirm). No API calls. Stage 1 (pilot) is approved in principle
+(hard-001 + hard-007, 1 repeat, hard budget 25) but runs ONLY when the user starts it; Stage 2 stays
+blocked until the user has reviewed Stage 1 (enforced by approval, not by code). Stage 3 not decided.
+- `registration.check_suite()` → `GuardResult` (matches | subset | differs | unregistered): compares task
+  definitions (tasks fingerprint, per-task hash, expected answer, answer type, tolerances, allowed and
+  required tools, max_steps, suite order), the tools fingerprint, the dataset fingerprint, and runs the
+  43 GRADING PROBES (`SHOP_HARD_ACCEPTED` / `SHOP_HARD_REJECTED`, now in shop_hard.py, shared with the A.2
+  tests) through today's evaluator — the registration v1 has no evaluator version, so evaluator rules are
+  verified by behaviour (known cases only). Newest MATCHING registration wins. What can't be checked is
+  listed as a note.
+- `run_benchmark.py`: the guard runs before the estimate (shop.db is built first if missing, offline).
+  A real run whose suite DIFFERS is REFUSED (exit 1, "Nothing was sent"); scripted runs only warn.
+  `AGENTBENCH_REGISTRATIONS_DIR` points the guard elsewhere (tests only).
+- Reports: `Registered :` (matches / SUBSET … NOT a full-suite result / not registered / DIFFERS);
+  `Run record :` provider, model id (as requested — the provider may update the model behind an id; our
+  Gemini client does not read the served model version), start time, `config` fingerprint (new
+  `AgentConfig.config_fingerprint`: provider, model, prompt hash, attempts, pacing — not the name),
+  tools, tasks and dataset fingerprints. Incomplete runs list `Completed :` and `Not done :` by task.
+- Budget: enforced per actual request INCLUDING retries (test: 2 retries count; 6-request cap = 6 sent).
+- `compare`: real runs from different days get "treat them as separate experiments".
+- Stage 1 estimate (nothing sent): 2 runs, generic ~10 typical, 60 worst case, cap 25; realistic ~15–20.
+
 **Benchmark v2 — Step A.2 Harder suite `shop-hard`: ✅ complete (offline)** (tests: 556 passed, 0 failed,
 0 skipped when run by Claude — user to confirm). PRE-REGISTERED as shop-hard v1 before any real run.
 No API calls. A.4 (real runs) is NOT approved; the 100-request budget is only a proposal.
@@ -476,6 +499,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Benchmark v2, Step A.4 — a few real shop-hard runs, gradually, within the free quota. NOT approved yet; plan first (proposal: 1 repeat, budget 100, estimate ~70–90 requests).
+Benchmark v2, Step A.4 Stage 1 — pilot, started by the user only: `python scripts/run_benchmark.py --agent gemini --suite shop-hard --tasks hard-001 hard-007 --budget 25` (estimate), then the same with `--yes --save`. Then review together; Stage 2 needs explicit approval.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

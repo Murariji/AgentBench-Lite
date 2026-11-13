@@ -158,6 +158,9 @@ monthly decrease, SQLite's weekday numbering, a tie rule, and distinct customers
 - **Proven:** every answer is recomputed independently in plain Python; 25 trap answers are rejected.
 - **Pre-registered** before any real run: `src/agentbench/suites/registrations/shop-hard.v1.json` freezes
   tasks, answers, grading and tools (with the git commit). A change means a new registered version.
+- **Guarded:** before any request, the run is checked against the registration (tasks, answers,
+  tolerances, tools, max steps, dataset, and 43 known answers through today's evaluator). A real run
+  that differs is refused. Reports say `matches`, `SUBSET … NOT a full-suite result`, or `DIFFERS`.
 
 ```powershell
 python scripts/run_benchmark.py --suite shop-hard --compare                       # scripted, free

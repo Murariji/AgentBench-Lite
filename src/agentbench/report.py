@@ -12,6 +12,7 @@ from pathlib import Path
 
 from agentbench.analysis import RunAnalysis, analyze_suite
 from agentbench.metrics import SuiteMetrics, compute_metrics
+from agentbench.registration import check_suite
 from agentbench.models import SuiteResult
 
 EXPORT_FORMAT = "agentbench-suite-result/1"
@@ -104,6 +105,11 @@ def format_report(suite: SuiteResult, metrics: SuiteMetrics | None = None) -> st
         "Tools      : " + (", ".join(f"{t.name} v{t.version}" for t in suite.tools)
                            + f"  (fingerprint {suite.tools_fingerprint})" if suite.tools is not None
                            else "not recorded (run stored before tool versions existed)"),
+        "Registered : " + _registration_line(suite),
+        f"Run record : provider {c.provider} | model id {c.model} (as requested; the provider may update the "
+        f"model behind an id) | started {suite.started_at:%Y-%m-%d %H:%M} UTC | config {c.config_fingerprint} | "
+        f"tools {suite.tools_fingerprint or 'not recorded'} | tasks {suite.tasks_fingerprint or 'n/a'} | "
+        f"dataset {suite.dataset or 'n/a'}",
         "",
     ]
     if m.complete:
@@ -112,6 +118,12 @@ def format_report(suite: SuiteResult, metrics: SuiteMetrics | None = None) -> st
         lines.append(f"Status     : INCOMPLETE - {m.infra_errors} infrastructure error(s), "
                      f"{m.skipped_runs} skipped; results below cover {m.eligible_runs} of "
                      f"{m.scheduled_runs} scheduled runs")
+        done = [_run_name(r.task_id, r.repeat, suite.repeats) for r in suite.records if r.outcome != "infra_error"]
+        not_done = ([_run_name(r.task_id, r.repeat, suite.repeats) + f" ({r.run.error_kind})"
+                     for r in suite.records if r.outcome == "infra_error"]
+                    + [_run_name(s.task_id, s.repeat, suite.repeats) + " (skipped)" for s in suite.skipped])
+        lines.append("Completed  : " + (", ".join(done) or "none"))
+        lines.append("Not done   : " + ", ".join(not_done))
     if suite.stop_reason:
         lines.append(f"Stopped    : {suite.stop_reason}")
     if suite.request_budget is not None or suite.estimated_requests is not None:
@@ -144,6 +156,17 @@ def format_report(suite: SuiteResult, metrics: SuiteMetrics | None = None) -> st
         lines.append(f"{skipped.task_id:10} {'-':7} {'SKIPPED':11} ({skipped.reason})")
     lines += ["", format_failures(suite)]
     return "\n".join(lines)
+
+
+def _run_name(task_id: str, repeat: int, repeats: int) -> str:
+    return task_id + (f" #{repeat + 1}" if repeats > 1 else "")
+
+
+def _registration_line(suite: SuiteResult) -> str:
+    """Does this stored/finished run match a pre-registration? (tasks, tools, dataset; Step A.4a)"""
+    if not suite.tasks:
+        return "cannot verify (no task definitions stored)"
+    return check_suite(suite.suite_name, suite.tasks, suite.tools, suite.dataset).line()
 
 
 # ---------- failure analysis (Phase 8) ----------------------------------------------
@@ -261,6 +284,10 @@ def compare(suites: list[SuiteResult]) -> str:
     else:
         lines.append("WARNING: several dimensions changed (" + ", ".join(changed) + "); "
                      "differences cannot be attributed to any single one of them.")
+    days = sorted({f"{s.started_at:%Y-%m-%d}" for s in suites})
+    if len(days) > 1 and any(not s.config.is_scripted for s in suites):
+        lines.append(f"NOTE: these runs are from different days ({', '.join(days)}): treat them as separate "
+                     "experiments; the provider's model behind the same id may have changed.")
     if any(s.config.is_scripted for s in suites):
         lines.append("NOTE: scripted agents only test the framework; their scores say nothing about AI ability.")
     return "\n".join(lines)
