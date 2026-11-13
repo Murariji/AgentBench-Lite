@@ -15,9 +15,24 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Benchmark v2 — Step A.3 Calculator v2 (code + tests): ✅ complete** (tests: **484 passed** when run by
-Claude; 73 new — user to confirm). The REAL measurement (shop-010 × 3, budget 30) has NOT been run: it
-waits for the user's explicit approval and is started by the user.
+**Benchmark v2 — Step A.3 Calculator v2: ✅ complete** (tests: **484 passed**; 73 new), measured.
+
+**A.3 measurement (user ran it, 2026-11-13, suite 42daa8df, gemini-3.5-flash-lite, shop-010 × 3,
+budget 30): 21 requests (generic estimate 15; realistic 7/run), 3/3 correct, 0 retries.**
+| | before (4 runs, tools unknown) | after (3 runs, calculator v2) |
+|---|---|---|
+| round() errors | 3/4 runs | 0/3 |
+| tool errors | 3 | 0 |
+| avg steps | 7.75 | 7.00 |
+| avg LLM calls | 8.25 (incl. 2 unrecorded retries) | 7.00 |
+| near step limit | 4/4 | 3/3 |
+Traces: the model still calls `round(16107.32)`; in v2 it succeeds, so the recovery step
+(`calculator(16107.32)`) disappears — the saved step is exactly the wasted one. The LLM-call drop
+overstates the effect (old retries were unrelated server errors); steps are the fairer measure.
+Not fixed: still 7 of 8 steps, because 4 steps are schema exploration (list_tables + 3 × describe_table).
+Exploratory evidence (tiny samples, unknown baseline, behaviour + description changed together).
+Idea for later (not planned): a cheaper way to see the schema, measured the same way.
+
 - Calculator **version 2**: exactly `round`, `abs`, `min`, `max`, called plainly (no attributes, keyword
   arguments or `*` unpacking; anything else → "function 'x' is not allowed; allowed: abs, max, min,
   round"). Call shape and argument counts checked BEFORE any argument is calculated. Limits: min/max
@@ -431,7 +446,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Step A.3 measurement — ONLY after the user's explicit approval, started by the user:
-`python scripts/run_benchmark.py --agent gemini --tasks shop-010 --repeats 3 --budget 30 --yes --save`, then `python scripts/results.py measure shop-010`. Then A.2 (harder suite) — plan first.
+Benchmark v2, Step A.2 — harder suite `shop-hard` on the same shop.db (tasks designed before any real run, answers proven by independent SQL). Plan first; waiting for user approval.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

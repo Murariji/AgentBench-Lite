@@ -163,6 +163,11 @@ python scripts/results.py history shop-010     # TOOLS column: fingerprint, or "
 python scripts/results.py measure shop-010     # exploratory before/after, grouped by agent and tools
 ```
 
+**Result** (shop-010, 3 new runs vs 4 old ones): the model still calls `round(16107.32)`, which now
+works, so the error and the recovery step disappear in every run: 0 tool errors (was 3), 7.00 steps
+on average (was 7.75), all answers correct. It did **not** remove the step-limit risk: the runs still
+use 7 of 8 steps, mostly exploring the schema (4 of 7 steps). Tiny samples: exploratory evidence.
+
 `measure` reports small samples as **exploratory evidence, not proof**, never mixes a scripted agent
 with a real model, and keeps infrastructure errors out of correctness. Known limitation: very small
 results print in scientific notation (`2e-10`), as they have since version 1.

@@ -113,3 +113,27 @@ floats have since v1. No benchmark task produces such values.
 8. Why is `Decimal(repr(x))` used instead of `Decimal(x)` for floats?
 9. Why would grouping `measure` by tools only have produced a misleading result?
 10. The 3rd repeat is stopped by the budget. How is it counted, and what does the report say?
+
+## A.3 result
+
+**A.3 measurement (user ran it, 2026-11-13, suite 42daa8df, gemini-3.5-flash-lite, shop-010 × 3,
+budget 30): 21 requests (generic estimate 15; realistic 7/run), 3/3 correct, 0 retries.**
+| | before (4 runs, tools unknown) | after (3 runs, calculator v2) |
+|---|---|---|
+| round() errors | 3/4 runs | 0/3 |
+| tool errors | 3 | 0 |
+| avg steps | 7.75 | 7.00 |
+| avg LLM calls | 8.25 (incl. 2 unrecorded retries) | 7.00 |
+| near step limit | 4/4 | 3/3 |
+Traces: the model still calls `round(16107.32)`; in v2 it succeeds, so the recovery step
+(`calculator(16107.32)`) disappears — the saved step is exactly the wasted one. The LLM-call drop
+overstates the effect (old retries were unrelated server errors); steps are the fairer measure.
+Not fixed: still 7 of 8 steps, because 4 steps are schema exploration (list_tables + 3 × describe_table).
+Exploratory evidence (tiny samples, unknown baseline, behaviour + description changed together).
+Idea for later (not planned): a cheaper way to see the schema, measured the same way.
+
+**What this teaches**
+- Look at the TRACES, not only the averages: they show the mechanism (the error step vanished).
+- Pick the fair metric: LLM calls included unrelated retries; steps did not.
+- Report what did NOT improve as clearly as what did (near step limit: 3/3).
+- A good measurement often points at the next problem (schema exploration).
