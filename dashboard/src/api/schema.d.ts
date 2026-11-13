@@ -925,6 +925,8 @@ export interface components {
         SuiteSummaryOut: {
             /** Complete */
             complete: boolean;
+            /** Config Fingerprint */
+            config_fingerprint: string;
             /** Config Name */
             config_name: string;
             /** Failed */
@@ -973,6 +975,8 @@ export interface components {
             suite_name: string;
             /** Tasks Fingerprint */
             tasks_fingerprint: string | null;
+            /** Tools Fingerprint */
+            tools_fingerprint: string | null;
             /** Total Llm Calls */
             total_llm_calls: number;
         };

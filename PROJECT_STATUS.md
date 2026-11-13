@@ -22,6 +22,24 @@ compare, task history + charts) waits for approval AND the subset decision (A or
 **Step 10.3a Failures + Task history pages: ✅ complete** (dashboard: 33 passed, type check clean, build OK;
 Python: 714 passed — when run by Claude; user to confirm). 10.3b waits for approval (and the
 config/tools-fingerprint decision recorded below).
+
+**Step 10.3b Compare page + pass-rate chart: ✅ complete** (dashboard: 52 passed, type check clean, build OK;
+Python: 720 passed — when run by Claude; user to confirm).
+- Contract change (logged in docs/api.md): `SuiteSummaryOut` gains `config_fingerprint` and `tools_fingerprint`
+  (null = not recorded). Computed by the SAME functions as run details (`suite_identity`, `run_identity`,
+  `AgentConfig.config_fingerprint`, `tools_fingerprint`); `tests/test_api_list_fingerprints.py` checks list = details.
+- Pass-rate chart on the Runs page (`src/charts/trend.ts` + `TrendChart.tsx`): one line per six-part group
+  (suite, provider, model, config, tools, real/scripted); only `matches` + `full` + complete runs are connected;
+  subset / differs / unregistered / incomplete / unknown are separate markers with the reason; the server's
+  rate unchanged, null = not plotted (never 0%); one run = "first comparable full-suite baseline"; follows
+  `next_offset` up to 500 runs and says so; real runs only unless "Include SCRIPTED runs" is ticked.
+- Compare page (`/compare?ids=..`): select 2–5 runs of one suite on the Runs page; shows the server's fairness
+  verdict, conclusions, dimensions, metrics and per-task table word for word; "not recorded" stays unknown;
+  409/422 shown clearly.
+- Sabotage checks (file change verified): connecting a subset point, merging two configs, null shown as 0% —
+  each broke 2 tests; restored.
+- Today's real data has no comparable trend yet (pilot is a subset, `shop` runs are unregistered), so the chart
+  shows markers and says so. Known: bundle 606 KB (Recharts) — lazy-loading planned for 10.5.
 - Recharts 2.13.3 (exact). `src/charts/data.ts`: pure reshaping functions (`categoryBars` keeps the server's
   categories, counts and order; `historyBars` orders oldest first and keeps "not run" as null) - no metrics.
 - Failures page (`/suites/:id/failures`, linked from run details): server summary (failed, passed, infra,
@@ -652,6 +670,7 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 10, Step 10.3b (Compare + pass-rate chart) with the user's recorded requirements (docs/learning/phase-10-notes.md): only registration_status=matches on the trend; separate lines per model, config and tools; incomplete marked; null = gap; 500-run limit disclosed. Needs a decision first: GET /suites lacks config_fingerprint and tools_fingerprint. In parallel: A.4 Stage 2.
+Phase 10, Step 10.4 (start-a-run page: estimate first, then POST /runs; real runs stay behind the server's
+gates) — waits for approval. Then 10.5 polish (lazy-load charts, screenshots). In parallel: A.4 Stage 2.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

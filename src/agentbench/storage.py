@@ -451,13 +451,24 @@ class ResultStore:
         tasks = [Task.model_validate_json(r["definition_json"]) for r in scheduled if r["definition_json"]]
         return [r["task_id"] for r in scheduled], tasks, self.suite_tools(suite_id), row["dataset"]
 
+    @staticmethod
+    def _config_from_row(row: sqlite3.Row) -> AgentConfig:
+        """The stored agent configuration - ONE way to rebuild it (load() and the run list both use this)."""
+        return AgentConfig(name=row["config_name"], provider=row["provider"], model=row["model"],
+                           system_prompt=row["system_prompt"], max_attempts=row["max_attempts"],
+                           min_interval_seconds=row["min_interval_seconds"])
+
+    def suite_config(self, suite_id: str) -> AgentConfig:
+        row = self._conn.execute("SELECT * FROM suite_runs WHERE suite_id = ?", (suite_id,)).fetchone()
+        if row is None:
+            raise SuiteNotFoundError(f"no suite with id {suite_id!r}")
+        return self._config_from_row(row)
+
     def load(self, suite_id: str) -> SuiteResult:
         row = self._conn.execute("SELECT * FROM suite_runs WHERE suite_id = ?", (suite_id,)).fetchone()
         if row is None:
             raise SuiteNotFoundError(f"no suite with id {suite_id!r}")
-        config = AgentConfig(name=row["config_name"], provider=row["provider"], model=row["model"],
-                             system_prompt=row["system_prompt"], max_attempts=row["max_attempts"],
-                             min_interval_seconds=row["min_interval_seconds"])
+        config = self._config_from_row(row)
         scheduled = self._conn.execute(
             "SELECT st.task_id, tv.definition_json FROM suite_tasks st"
             " LEFT JOIN task_versions tv ON tv.task_hash = st.task_hash"

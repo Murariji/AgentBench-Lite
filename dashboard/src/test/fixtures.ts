@@ -17,12 +17,13 @@ export const metrics = (overrides: Partial<Schemas["SuiteMetrics"]> = {}): Schem
   pass_at_k: null, pass_pow_k: null, ...overrides,
 });
 
-const summary = (o: Partial<Schemas["SuiteSummaryOut"]>): Schemas["SuiteSummaryOut"] => ({
+export const summary = (o: Partial<Schemas["SuiteSummaryOut"]>): Schemas["SuiteSummaryOut"] => ({
   suite_id: REAL_ID, short_id: REAL_ID.slice(0, 8), suite_name: "shop-hard", kind: "real", config_name: "gemini-default",
   provider: "gemini", model: "gemini-3.5-flash-lite", repeats: 1, started_at: "2026-11-13T09:34:52.234559Z",
   finished_at: "2026-11-13T09:36:20.558597Z", scheduled_runs: 2, passed: 2, failed: 0, infra_errors: 0, skipped: 0,
   total_llm_calls: 14, pass_rate: { passed: 2, eligible: 2, rate: 1, text: "2/2 (100.0%)" }, complete: true,
-  stop_reason: null, tasks_fingerprint: "0d0389d403dc", registration_status: "subset", scope: "subset", ...o,
+  stop_reason: null, tasks_fingerprint: "0d0389d403dc", registration_status: "subset", scope: "subset",
+  config_fingerprint: "dfba9fdfb262", tools_fingerprint: "c1af5a87019e", ...o,
 });
 
 export const suitePage = (o: Partial<SuitePage["pagination"]> = {}): SuitePage => ({
@@ -190,3 +191,22 @@ export const measureOut: Schemas["MeasureOut"] = {
     "Infrastructure errors and skipped runs are excluded from correctness and averages.",
   ],
 };
+
+// ---------- Step 10.3b: compare ----------
+export const compareOut = (o: Partial<Schemas["CompareOut"]> = {}): Schemas["CompareOut"] => ({
+  suite_ids: ["0af951e0aaaabbbbccccddddeeeeffff", "743cde41aaaabbbbccccddddeeeeffff"],
+  fair: false, unfair_dimensions: ["repeats"], changed_dimensions: [], tools_status: "unknown",
+  conclusions: [
+    "WARNING: tools were not recorded for 743cde41 (stored before tool versions existed): tools are unknown, not assumed identical.",
+    "NOT A FAIR COMPARISON: these differ between runs: repeats. Results are not comparable.",
+    "Configuration: no dimension changed either; the difference is in how the runs were set up (above), so no conclusion about the agent is possible.",
+  ],
+  dimensions: {
+    "provider": ["gemini", "gemini"], "model": ["gemini-3.5-flash-lite", "gemini-3.5-flash-lite"],
+    "tools (fingerprint)": ["not recorded", "not recorded"], "repeats": ["3", "1"],
+  },
+  metrics: [metrics({ pass_rate: rate(30, 30), scheduled_runs: 30 }), metrics({ pass_rate: rate(10, 10), scheduled_runs: 10 })],
+  tasks: [{ task_id: "shop-001", outcomes: ["passed", "passed"], differs: false },
+          { task_id: "shop-002", outcomes: ["passed", "failed"], differs: true }],
+  ...o,
+});

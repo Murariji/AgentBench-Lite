@@ -200,3 +200,9 @@ python scripts/update_api_contract.py --write --reason "why it changes"       # 
 - added field SuiteSummaryOut.scope (enum(full,subset,unknown))
 - added field SuiteSummaryOut.tasks_fingerprint (null|string)
 - CHANGED required fields of SuiteSummaryOut: ['complete', 'config_name', 'failed', 'finished_at', 'infra_errors', 'kind', 'model', 'pass_rate', 'passed', 'provider', 'repeats', 'scheduled_runs', 'short_id', 'skipped', 'started_at', 'stop_reason', 'suite_id', 'suite_name', 'total_llm_calls'] -> ['complete', 'config_name', 'failed', 'finished_at', 'infra_errors', 'kind', 'model', 'pass_rate', 'passed', 'provider', 'registration_status', 'repeats', 'scheduled_runs', 'scope', 'short_id', 'skipped', 'started_at', 'stop_reason', 'suite_id', 'suite_name', 'tasks_fingerprint', 'total_llm_calls']
+
+### 2026-11-13 — GET /suites items gain config_fingerprint (the stored config, same formula as run details) and tools_fingerprint (null when tools were not recorded), so the pass-rate chart never joins runs of different configurations or tools into one line
+
+- added field SuiteSummaryOut.config_fingerprint (string)
+- added field SuiteSummaryOut.tools_fingerprint (null|string)
+- CHANGED required fields of SuiteSummaryOut: ['complete', 'config_name', 'failed', 'finished_at', 'infra_errors', 'kind', 'model', 'pass_rate', 'passed', 'provider', 'registration_status', 'repeats', 'scheduled_runs', 'scope', 'short_id', 'skipped', 'started_at', 'stop_reason', 'suite_id', 'suite_name', 'tasks_fingerprint', 'total_llm_calls'] -> ['complete', 'config_fingerprint', 'config_name', 'failed', 'finished_at', 'infra_errors', 'kind', 'model', 'pass_rate', 'passed', 'provider', 'registration_status', 'repeats', 'scheduled_runs', 'scope', 'short_id', 'skipped', 'started_at', 'stop_reason', 'suite_id', 'suite_name', 'tasks_fingerprint', 'tools_fingerprint', 'total_llm_calls']

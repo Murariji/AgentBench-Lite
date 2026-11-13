@@ -71,6 +71,9 @@ class SuiteSummaryOut(BaseModel):
     tasks_fingerprint: str | None    # None = task definitions were not stored: the task set is UNKNOWN
     registration_status: Literal["matches", "subset", "differs", "unregistered", "unknown"]
     scope: Literal["full", "subset", "unknown"]   # unknown is NEVER assumed to be "full"
+    # Which agent configuration and which tools (contract change 2026-11-13, for comparable chart groups).
+    config_fingerprint: str          # AgentConfig.config_fingerprint of the STORED config (same formula everywhere)
+    tools_fingerprint: str | None    # None = tools were not recorded for this run (unknown, never invented)
 
 
 class SuitePage(BaseModel):

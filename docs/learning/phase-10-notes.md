@@ -104,8 +104,29 @@ stays unknown; the measure always shows every limitation.
 in `sed` patterns), so it "passed" for the wrong reason. A sabotage check is only valid if you confirm the
 code really changed.
 
+## Step 10.3b — Compare page and pass-rate chart
+
+| Concept | In plain words |
+|---|---|
+| one formula | the list and the details page call the SAME fingerprint function, so they can never disagree |
+| grouping key | six parts (suite, provider, model, config, tools, real/scripted); a line only joins runs with all six equal |
+| unknown is not a value | a missing tools fingerprint gets its own group, written differently from any real fingerprint |
+| independent lines | each group is sorted by time on its own; a run from another group can never sit "between" its points |
+| baseline vs trend | one point is a starting measurement, not a direction; we say "baseline" |
+| scaling vs computing | turning 0.78 into a dot's height is drawing; turning outcomes into 0.78 is computing — only the server computes |
+| pagination | ask for 100 runs at a time and follow `next_offset`, stopping at 500 and saying so |
+
+**Why today's chart has no line:** the pilot is a subset, the `shop` runs are unregistered, and the
+`matches` runs are scripted (hidden by default). The chart says this instead of drawing a misleading line.
+
 ## Self-check (10.3a)
 9. Why are infrastructure errors not a bar in the failure-category chart?
 10. A skipped run has `llm_calls: null`. Why is it drawn as no bar instead of a 0 bar?
 11. Why does the task-history chart use bars, not a line?
 12. Why does every chart have a table next to it?
+
+## Self-check (10.3b)
+13. Two runs have the same model but different config fingerprints. Why are they two lines?
+14. Why is a run whose tools were not recorded never put on the line of a known tools fingerprint?
+15. A run evaluated 0 tasks (rate null). Why is it not drawn at 0%?
+16. Why does one comparable run say "baseline" and not "trend"?

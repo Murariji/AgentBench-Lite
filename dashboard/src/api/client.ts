@@ -18,6 +18,25 @@ export type RunAnalysis = Schemas["RunAnalysis"];
 export type HistoryPage = Schemas["HistoryPage"];
 export type HistoryEntry = Schemas["TaskHistoryEntry"];
 export type Measure = Schemas["MeasureOut"];
+export type Compare = Schemas["CompareOut"];
+
+export const CHART_RUN_LIMIT = 500;   // the chart reads at most this many runs (newest first)
+const CHART_PAGE = 100;              // the API's maximum page size
+
+/** All runs for the chart: follows the server's next_offset, stopping at CHART_RUN_LIMIT.
+ *  `total` is the server's count, so the page can say "showing the latest 500 of N". */
+export async function fetchRunsForChart(): Promise<{ items: SuiteSummary[]; total: number; capped: boolean }> {
+  const items: SuiteSummary[] = [];
+  let offset: number | null = 0;
+  let total = 0;
+  while (offset !== null && items.length < CHART_RUN_LIMIT) {
+    const page: SuitePage = await api.suites({ offset, limit: Math.min(CHART_PAGE, CHART_RUN_LIMIT - items.length) });
+    items.push(...page.items);
+    total = page.pagination.total;
+    offset = page.pagination.next_offset;
+  }
+  return { items, total, capped: total > items.length };
+}
 
 // Where the API runs. Override with VITE_API_BASE in dashboard/.env.local if you changed the port.
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
@@ -89,4 +108,10 @@ export const api = {
     request<HistoryPage>(`/tasks/${encodeURIComponent(taskId)}/history?${new URLSearchParams({
       limit: String(limit), offset: String(offset) })}`),
   measure: (taskId: string) => request<Measure>(`/tasks/${encodeURIComponent(taskId)}/measure`),
+  /** GET /compare - the server checks fairness and writes the conclusions. */
+  compare: (ids: string[]) => {
+    const query = new URLSearchParams();
+    ids.forEach((id) => query.append("ids", id));
+    return request<Compare>(`/compare?${query}`);
+  },
 };

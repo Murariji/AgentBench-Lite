@@ -1,9 +1,22 @@
 // Home page: every stored benchmark run, newest first. Pages and the "real only" filter live in the URL
 // (?offset=20&real_only=true), so the back button and bookmarks work. Values shown exactly as the API sends them.
-import { Link, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, PAGE_SIZE } from "../api/client";
 import { useApi } from "../api/useApi";
+import { TrendChart } from "../components/TrendChart";
 import { CompleteBadge, KindBadge, Loaded, ScopeBadge } from "../components/ui";
+
+const MAX_COMPARE = 5;
+
+/** Why the Compare button is disabled (null = it may be pressed). The server still checks everything. */
+export function compareBlocker(selected: Map<string, string>): string | null {
+  if (selected.size < 2) return "select 2 to 5 runs to compare";
+  if (selected.size > MAX_COMPARE) return `at most ${MAX_COMPARE} runs can be compared`;
+  const suites = new Set(selected.values());
+  if (suites.size > 1) return `runs of different suites cannot be compared (${[...suites].sort().join(", ")})`;
+  return null;
+}
 import { utc } from "../format";
 
 export function RunsPage() {
@@ -11,6 +24,18 @@ export function RunsPage() {
   const offset = Math.max(0, Number(params.get("offset")) || 0);
   const realOnly = params.get("real_only") === "true";
   const page = useApi(() => api.suites({ offset, realOnly }), [offset, realOnly]);
+  const [selected, setSelected] = useState<Map<string, string>>(new Map()); // suite_id -> suite_name
+  const navigate = useNavigate();
+  const blocker = compareBlocker(selected);
+  const toggle = (id: string, suiteName: string) =>
+    setSelected((prev) => {
+      const next = new Map(prev);
+      if (next.has(id)) next.delete(id);
+      else next.set(id, suiteName);
+      return next;
+    });
+  const compare = () =>
+    navigate(`/compare?${new URLSearchParams([...selected.keys()].map((id) => ["ids", id]))}`);
 
   const go = (next: { offset?: number; realOnly?: boolean }) => {
     const p = new URLSearchParams();
@@ -31,6 +56,19 @@ export function RunsPage() {
         </label>
       </div>
 
+      <TrendChart />
+
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <button onClick={compare} disabled={blocker !== null}
+                className="rounded bg-slate-900 px-3 py-1 text-white disabled:opacity-40">
+          Compare ({selected.size})
+        </button>
+        <span className="text-slate-500" data-testid="compare-hint">{blocker ?? "ready to compare"}</span>
+        {selected.size > 0 && (
+          <button onClick={() => setSelected(new Map())} className="text-slate-600 underline">clear selection</button>
+        )}
+      </div>
+
       <Loaded state={page}>
         {({ items, pagination }) =>
           items.length === 0 ? (
@@ -40,9 +78,10 @@ export function RunsPage() {
           ) : (
             <>
               <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-                <table className="w-full text-left text-sm">
+                <table className="w-full text-left text-sm" aria-label="runs">
                   <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                     <tr>
+                      <th className="px-3 py-2"><span className="sr-only">select</span></th>
                       <th className="px-3 py-2">Run</th><th className="px-3 py-2">Started</th>
                       <th className="px-3 py-2">Agent</th><th className="px-3 py-2">Suite</th>
                       <th className="px-3 py-2">Scope</th>
@@ -53,6 +92,10 @@ export function RunsPage() {
                   <tbody>
                     {items.map((s) => (
                       <tr key={s.suite_id} className="border-t border-slate-100 hover:bg-slate-50">
+                        <td className="px-3 py-2">
+                          <input type="checkbox" aria-label={`select ${s.short_id} for comparison`}
+                                 checked={selected.has(s.suite_id)} onChange={() => toggle(s.suite_id, s.suite_name)} />
+                        </td>
                         <td className="px-3 py-2 font-mono">
                           <Link to={`/suites/${s.suite_id}`} className="text-sky-700 hover:underline">{s.short_id}</Link>
                         </td>

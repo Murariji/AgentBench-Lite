@@ -2076,6 +2076,10 @@
       "title": "Complete",
       "type": "boolean"
      },
+     "config_fingerprint": {
+      "title": "Config Fingerprint",
+      "type": "string"
+     },
      "config_name": {
       "title": "Config Name",
       "type": "string"
@@ -2190,6 +2194,17 @@
       ],
       "title": "Tasks Fingerprint"
      },
+     "tools_fingerprint": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tools Fingerprint"
+     },
      "total_llm_calls": {
       "title": "Total Llm Calls",
       "type": "integer"
@@ -2217,7 +2232,9 @@
      "stop_reason",
      "tasks_fingerprint",
      "registration_status",
-     "scope"
+     "scope",
+     "config_fingerprint",
+     "tools_fingerprint"
     ],
     "title": "SuiteSummaryOut",
     "type": "object"

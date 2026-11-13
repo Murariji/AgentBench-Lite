@@ -841,6 +841,7 @@
   "SuiteSummaryOut": {
    "fields": {
     "complete": "boolean",
+    "config_fingerprint": "string",
     "config_name": "string",
     "failed": "integer",
     "finished_at": "null|string",
@@ -861,10 +862,12 @@
     "suite_id": "string",
     "suite_name": "string",
     "tasks_fingerprint": "null|string",
+    "tools_fingerprint": "null|string",
     "total_llm_calls": "integer"
    },
    "required": [
     "complete",
+    "config_fingerprint",
     "config_name",
     "failed",
     "finished_at",
@@ -885,6 +888,7 @@
     "suite_id",
     "suite_name",
     "tasks_fingerprint",
+    "tools_fingerprint",
     "total_llm_calls"
    ]
   },

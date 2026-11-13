@@ -1,4 +1,5 @@
 import { BrowserRouter, Link, NavLink, Route, Routes } from "react-router-dom";
+import { ComparePage } from "./pages/ComparePage";
 import { ConnectionPage } from "./pages/ConnectionPage";
 import { FailuresPage } from "./pages/FailuresPage";
 import { RunDetailsPage } from "./pages/RunDetailsPage";
@@ -30,6 +31,7 @@ export function AppRoutes() {
           <Route path="/suites/:suiteId/runs/:runId" element={<TraceViewerPage />} />
           <Route path="/suites/:suiteId/failures" element={<FailuresPage />} />
           <Route path="/tasks/:taskId" element={<TaskHistoryPage />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="/connection" element={<ConnectionPage />} />
           <Route path="*" element={<p role="alert">Page not found. <Link to="/" className="text-sky-700 underline">All runs</Link></p>} />
         </Routes>

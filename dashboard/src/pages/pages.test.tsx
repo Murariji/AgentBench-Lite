@@ -7,15 +7,17 @@ import { AppRoutes } from "../App";
 import { fakeFetch } from "../test/fakeApi";
 import { failedRun, ids, oldDetail, pilotDetail, suitePage } from "../test/fixtures";
 
+const CHART = "/suites?limit=100&offset=0";   // the pass-rate chart reads runs too
+
 function open(path: string) {
   return render(<MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter>);
 }
 
 describe("Runs page", () => {
   it("lists runs as the API reports them, with honest labels", async () => {
-    fakeFetch({ "/suites?limit=20&offset=0": { body: suitePage() } });
+    fakeFetch({ "/suites?limit=20&offset=0": { body: suitePage() }, [CHART]: { body: suitePage() } });
     open("/");
-    const table = await screen.findByRole("table");
+    const table = await screen.findByRole("table", { name: "runs" });
     const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(5); // header + 4 runs
     expect(rows[1]).toHaveTextContent("f8e7c26f");
@@ -28,9 +30,9 @@ describe("Runs page", () => {
   });
 
   it("marks subset, full, unknown and differing runs as the API reports them", async () => {
-    fakeFetch({ "/suites?limit=20&offset=0": { body: suitePage() } });
+    fakeFetch({ "/suites?limit=20&offset=0": { body: suitePage() }, [CHART]: { body: suitePage() } });
     open("/");
-    const rows = within(await screen.findByRole("table")).getAllByRole("row");
+    const rows = within(await screen.findByRole("table", { name: "runs" })).getAllByRole("row");
     expect(rows[1]).toHaveTextContent("SUBSET");            // the 2-task pilot: not a full-suite score
     expect(rows[1]).toHaveTextContent("registered ✓");
     expect(rows[2]).toHaveTextContent("task set unknown");  // never shown as a full run
@@ -42,6 +44,7 @@ describe("Runs page", () => {
 
   it("pages with the server's limit/offset and keeps the page in the URL", async () => {
     const { calls } = fakeFetch({
+      [CHART]: { body: suitePage() },
       "/suites?limit=20&offset=0": { body: suitePage({ total: 25, next_offset: 20 }) },
       "/suites?limit=20&offset=20": { body: suitePage({ offset: 20, total: 25, returned: 4, next_offset: null }) },
     });
@@ -51,11 +54,13 @@ describe("Runs page", () => {
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled(); // next_offset: null = last page
     fireEvent.click(screen.getByRole("button", { name: "Previous" }));
     expect(await screen.findByText("1–4 of 25")).toBeInTheDocument();
-    expect(calls).toEqual(["/suites?limit=20&offset=0", "/suites?limit=20&offset=20", "/suites?limit=20&offset=0"]);
+    expect(calls.filter((c) => c !== CHART)).toEqual(
+      ["/suites?limit=20&offset=0", "/suites?limit=20&offset=20", "/suites?limit=20&offset=0"]);
   });
 
   it("asks the server for real runs only (the filter is applied by the API)", async () => {
     const { calls } = fakeFetch({
+      [CHART]: { body: suitePage() },
       "/suites?limit=20&offset=0": { body: suitePage() },
       "/suites?limit=20&offset=0&real_only=true": { body: { items: [], pagination: { limit: 20, offset: 0, total: 0, returned: 0, next_offset: null } } },
     });
@@ -66,9 +71,11 @@ describe("Runs page", () => {
   });
 
   it("shows the API's error and can retry", async () => {
-    fakeFetch({ "/suites?limit=20&offset=0": { status: 503, body: { error: { code: "storage_unavailable", message: "database broken", details: null } } } });
+    const broken = { status: 503, body: { error: { code: "storage_unavailable", message: "database broken", details: null } } };
+    fakeFetch({ "/suites?limit=20&offset=0": broken, [CHART]: broken });
     open("/");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load (storage_unavailable)");
+    const alerts = await screen.findAllByRole("alert");                 // the chart and the table both say so
+    expect(alerts.every((a) => a.textContent?.includes("Could not load (storage_unavailable)"))).toBe(true);
   });
 });
 

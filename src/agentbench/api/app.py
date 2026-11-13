@@ -39,7 +39,7 @@ from agentbench.report import RESULTS_DIR
 from agentbench.runs import RunPlan, RunRequestError, gemini_client, gemini_config, plan_run, redact, scripted_parts
 from agentbench.measurement import MEASURE_LIMITATIONS, measure_task
 from agentbench.metrics import compute_metrics
-from agentbench.models import SuiteResult, tasks_fingerprint
+from agentbench.models import SuiteResult, tasks_fingerprint, tools_fingerprint
 from agentbench.registration import check_suite, registrations_for
 from agentbench.report import CONFIG_DIMENSIONS, FAIRNESS_DIMENSIONS, comparison_conclusions
 from agentbench.storage import (DEFAULT_RESULTS_DB, SCHEMA_VERSION, AmbiguousSuiteIdError, ResultStore,
@@ -188,6 +188,15 @@ def run_identity(suite_name: str, task_ids: list[str], tasks: list, tools, datas
     return {"tasks_fingerprint": tasks_fingerprint(tasks), "registration_status": guard.status, "scope": scope}
 
 
+def _list_fingerprints(store: ResultStore, suite_name: str, suite_id: str) -> dict:
+    """Everything the run list says about WHAT ran - all from stored data, using the existing formulas:
+    AgentConfig.config_fingerprint and models.tools_fingerprint (None when tools were not recorded)."""
+    task_ids, tasks, tools, dataset = store.suite_identity(suite_id)
+    return {**run_identity(suite_name, task_ids, tasks, tools, dataset),
+            "config_fingerprint": store.suite_config(suite_id).config_fingerprint,
+            "tools_fingerprint": tools_fingerprint(tools)}
+
+
 def _known_task(store: ResultStore, task_id: str) -> None:
     in_suites = any(t.id == task_id for tasks in SUITES.values() for t in tasks)
     if not in_suites and not store.task_history(task_id):
@@ -294,7 +303,7 @@ def create_app(db_path: str | FilePath = DEFAULT_RESULTS_DB, *, allow_real_runs:
         items = [SuiteSummaryOut(
             **row.model_dump(), short_id=row.suite_id[:8], kind=_kind(row.provider),
             pass_rate=_rate(row.passed, row.passed + row.failed, str(row.pass_rate)), complete=row.complete,
-            **run_identity(row.suite_name, *store.suite_identity(row.suite_id)))
+            **_list_fingerprints(store, row.suite_name, row.suite_id))
             for row in rows]                                  # computed for THIS page only (<= 100 runs)
         return SuitePage(items=items, pagination=pagination)
 
