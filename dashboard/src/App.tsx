@@ -3,7 +3,9 @@ import { ComparePage } from "./pages/ComparePage";
 import { ConnectionPage } from "./pages/ConnectionPage";
 import { FailuresPage } from "./pages/FailuresPage";
 import { RunDetailsPage } from "./pages/RunDetailsPage";
+import { RunJobPage } from "./pages/RunJobPage";
 import { RunsPage } from "./pages/RunsPage";
+import { StartRunPage } from "./pages/StartRunPage";
 import { TaskHistoryPage } from "./pages/TaskHistoryPage";
 import { TraceViewerPage } from "./pages/TraceViewerPage";
 
@@ -19,6 +21,7 @@ export function AppRoutes() {
           <Link to="/" className="text-xl font-bold">AgentBench-Lite</Link>
           <nav className="flex gap-1" aria-label="main">
             <NavLink to="/" end className={nav}>Runs</NavLink>
+            <NavLink to="/runs/new" className={nav}>Start a run</NavLink>
             <NavLink to="/connection" className={nav}>API connection</NavLink>
           </nav>
           <span className="ml-auto text-xs text-slate-500">local dashboard · displays the API, computes nothing</span>
@@ -32,6 +35,8 @@ export function AppRoutes() {
           <Route path="/suites/:suiteId/failures" element={<FailuresPage />} />
           <Route path="/tasks/:taskId" element={<TaskHistoryPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/runs/new" element={<StartRunPage />} />
+          <Route path="/jobs/:jobId" element={<RunJobPage />} />
           <Route path="/connection" element={<ConnectionPage />} />
           <Route path="*" element={<p role="alert">Page not found. <Link to="/" className="text-sky-700 underline">All runs</Link></p>} />
         </Routes>

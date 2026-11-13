@@ -119,6 +119,16 @@ code really changed.
 **Why today's chart has no line:** the pilot is a subset, the `shop` runs are unregistered, and the
 `matches` runs are scripted (hidden by default). The chart says this instead of drawing a misleading line.
 
+## Step 10.4 — Starting a run from the dashboard
+
+| Concept | In plain words |
+|---|---|
+| estimate before start | like getting the bill before you order: POST /estimates never sends anything to a model |
+| the server is the guard | the page never decides if a run is safe; it shows the server's yes/no and its reasons |
+| stale estimate | if you change the form after estimating, the old estimate no longer describes your request |
+| polling | asking "are you done yet?" every second, and stopping as soon as the answer is yes |
+| job vs result | the job's progress lives in the server's memory (lost on restart); the results are saved in SQLite |
+
 ## Self-check (10.3a)
 9. Why are infrastructure errors not a bar in the failure-category chart?
 10. A skipped run has `llm_calls: null`. Why is it drawn as no bar instead of a 0 bar?
@@ -130,3 +140,8 @@ code really changed.
 14. Why is a run whose tools were not recorded never put on the line of a known tools fingerprint?
 15. A run evaluated 0 tasks (rate null). Why is it not drawn at 0%?
 16. Why does one comparable run say "baseline" and not "trend"?
+
+## Self-check (10.4)
+17. Why can the dashboard not start a real run by itself, even if the page has a bug?
+18. Why is the Start button disabled after you change the repeats?
+19. What does the job page do when the server says "finished"?

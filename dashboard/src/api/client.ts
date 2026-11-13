@@ -19,6 +19,14 @@ export type HistoryPage = Schemas["HistoryPage"];
 export type HistoryEntry = Schemas["TaskHistoryEntry"];
 export type Measure = Schemas["MeasureOut"];
 export type Compare = Schemas["CompareOut"];
+export type RunRequest = Schemas["RunIn"];
+export type Estimate = Schemas["EstimateOut"];
+export type Job = Schemas["JobOut"];
+
+/** The suites the server knows today (agentbench.suites.SUITES). The server still validates every request. */
+export const SUITES = ["shop-hard", "shop"] as const;
+/** A job is still moving while it is in one of these states (the server's JOB_STATES). */
+export const ACTIVE_JOB_STATES = ["queued", "running"];
 
 export const CHART_RUN_LIMIT = 500;   // the chart reads at most this many runs (newest first)
 const CHART_PAGE = 100;              // the API's maximum page size
@@ -114,4 +122,10 @@ export const api = {
     ids.forEach((id) => query.append("ids", id));
     return request<Compare>(`/compare?${query}`);
   },
+  /** POST /estimates - what a run would cost and whether the server would accept it. Sends nothing to any model. */
+  estimate: (body: RunRequest) => request<Estimate>("/estimates", { method: "POST", body: JSON.stringify(body) }),
+  /** POST /runs - starts the run in the background on the server (all safety gates are checked THERE). */
+  startRun: (body: RunRequest) => request<Job>("/runs", { method: "POST", body: JSON.stringify(body) }),
+  /** GET /runs/{job_id} - the job's progress (kept in the server's memory only). */
+  job: (jobId: string) => request<Job>(`/runs/${encodeURIComponent(jobId)}`),
 };

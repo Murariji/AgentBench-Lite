@@ -5,10 +5,12 @@ export type FakeReply = { status?: number; body?: unknown; raw?: string } | "net
 
 export function fakeFetch(replies: Record<string, FakeReply>) {
   const calls: string[] = [];
-  const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+  const sent: { method: string; path: string; body: unknown }[] = [];   // what the page sent (POST bodies)
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input));
     const key = url.pathname + url.search;
     calls.push(key);
+    sent.push({ method: init?.method ?? "GET", path: key, body: init?.body ? JSON.parse(String(init.body)) : null });
     const reply = replies[key];
     if (reply === undefined) throw new Error(`fakeFetch: no reply set up for ${key}`);
     if (reply === "network-down") throw new TypeError("Failed to fetch");
@@ -16,5 +18,5 @@ export function fakeFetch(replies: Record<string, FakeReply>) {
     return new Response(text, { status: reply.status ?? 200, headers: { "Content-Type": "application/json" } });
   });
   vi.stubGlobal("fetch", fetchMock);
-  return { fetchMock, calls };
+  return { fetchMock, calls, sent };
 }

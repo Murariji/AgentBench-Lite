@@ -193,6 +193,30 @@ export const measureOut: Schemas["MeasureOut"] = {
 };
 
 // ---------- Step 10.3b: compare ----------
+export const JOB_ID = "1234abcd1234abcd1234abcd1234abcd";
+
+export const estimateOut = (o: Partial<Schemas["EstimateOut"]> = {}): Schemas["EstimateOut"] => ({
+  agent: "gemini", kind: "real", suite: "shop-hard",
+  tasks: ["hard-001", "hard-002", "hard-003", "hard-004", "hard-005", "hard-006", "hard-007", "hard-008", "hard-009"],
+  runs: 9,
+  estimate: { typical_requests: 63, worst_case_requests: 90, budget: 100, estimated_seconds: 540 },
+  registration: { status: "matches", line: "Registration: matches shop-hard v1 (5f106feaff34).", problems: [], notes: [],
+                  version: 1, suite_fingerprint: "5f106feaff34" },
+  real_runs_enabled: true, allowed: true, reasons: [], note: "An estimate never sends anything to any model.",
+  ...o,
+});
+
+export const jobOut = (o: Partial<Schemas["JobOut"]> = {}): Schemas["JobOut"] => ({
+  job_id: JOB_ID, status: "running", agent: "gemini", kind: "real", suite: "shop-hard",
+  tasks: ["hard-001", "hard-002"], repeats: 1, budget: 30,
+  created_at: "2026-11-13T10:00:00Z", started_at: "2026-11-13T10:00:01Z", finished_at: null,
+  completed_tasks: 1, total_tasks: 2, percent: 50, current_task: "hard-002", current_repeat: 1,
+  progress: ["hard-001 #1: passed (5 requests)"], suite_id: null, saved: null, save_error: null, recovery_path: null,
+  error: null, summary: null,
+  note: "Job status is kept in memory only and is lost when the server stops. Finished benchmark results are stored.",
+  ...o,
+});
+
 export const compareOut = (o: Partial<Schemas["CompareOut"]> = {}): Schemas["CompareOut"] => ({
   suite_ids: ["0af951e0aaaabbbbccccddddeeeeffff", "743cde41aaaabbbbccccddddeeeeffff"],
   fair: false, unfair_dimensions: ["repeats"], changed_dimensions: [], tools_status: "unknown",

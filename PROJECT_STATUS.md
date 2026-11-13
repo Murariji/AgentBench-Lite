@@ -40,6 +40,20 @@ Python: 720 passed — when run by Claude; user to confirm).
   each broke 2 tests; restored.
 - Today's real data has no comparable trend yet (pilot is a subset, `shop` runs are unregistered), so the chart
   shows markers and says so. Known: bundle 606 KB (Recharts) — lazy-loading planned for 10.5.
+
+**Step 10.4 Start-a-run page: ✅ complete** (dashboard: 61 passed, type check clean; Python: 720 passed —
+when run by Claude; user to confirm). No backend change.
+- `/runs/new`: agent (Gemini REAL by default, or a SCRIPTED test agent), suite, optional tasks, repeats, and
+  for Gemini a budget + confirmation. "Estimate" (POST /estimates) shows the server's numbers, registration
+  line and verdict; "Start" (POST /runs) is enabled only when the server said yes AND the form has not changed.
+- If the server was started without `--allow-real-runs`, the page shows the exact command to enable real runs;
+  the server's refusal is shown word for word. All gates stay on the server; the key never reaches the browser.
+- `/jobs/:jobId`: polls GET /runs/{id} every second while queued/running, stops when done; server progress
+  bar and lines; link to the stored results; INCOMPLETE and "could not be saved" (with recovery path) shown
+  honestly; 409 "run in progress" links to the active job.
+- Sabotage checks: Start allowed despite a refusal, confirm=true on a scripted run, polling that never stops —
+  each broke a test; restored. End-to-end (real API, copy of the DB, scripted only): page's requests accepted,
+  real run refused with 403 when disabled, CORS preflight OK, scripted job finished 9/9 and saved.
 - Recharts 2.13.3 (exact). `src/charts/data.ts`: pure reshaping functions (`categoryBars` keeps the server's
   categories, counts and order; `historyBars` orders oldest first and keeps "not run" as null) - no metrics.
 - Failures page (`/suites/:id/failures`, linked from run details): server summary (failed, passed, infra,
@@ -670,7 +684,8 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 10, Step 10.4 (start-a-run page: estimate first, then POST /runs; real runs stay behind the server's
-gates) — waits for approval. Then 10.5 polish (lazy-load charts, screenshots). In parallel: A.4 Stage 2.
+Phase 10, Step 10.5 polish (lazy-load charts, screenshots) — waits for approval.
+Recommended real run (user starts it): `python scripts/serve_api.py --allow-real-runs`, then shop-hard from
+the Start-a-run page (A.4 Stage 2, budget 100). Then 10.5 polish (lazy-load charts, screenshots). In parallel: A.4 Stage 2.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.
