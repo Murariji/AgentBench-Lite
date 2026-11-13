@@ -129,6 +129,27 @@ code really changed.
 | polling | asking "are you done yet?" every second, and stopping as soon as the answer is yes |
 | job vs result | the job's progress lives in the server's memory (lost on restart); the results are saved in SQLite |
 
+## Redesign R1 — themes and base components
+
+| Concept | In plain words |
+|---|---|
+| design token | a named colour ("surface") whose value depends on the theme; components only use the names |
+| preference vs resolved | what you chose (Light/Dark/System) vs what is drawn (light/dark) |
+| persistence | the choice is saved in the browser (localStorage); if that is blocked, System is used |
+| no flash | a tiny script in index.html sets the theme before anything is drawn |
+| context | a value shared with every component below a provider, read with useTheme() |
+| WCAG contrast | a number from 1 to 21; text needs 4.5:1 - a test checks every pair in both themes |
+| dev-only code | `import.meta.env.DEV` is false in production builds, so the /design page is removed |
+
+## Redesign R2–R6 — shell, Overview, live progress
+
+| Concept | In plain words |
+|---|---|
+| code splitting | each page is its own small file, downloaded only when you open it |
+| app shell | the parts that never change (sidebar, top bar); only the middle changes per page |
+| polling + clock | the page asks the server every second; the elapsed clock is just "now minus started_at" |
+| counting behind the budget | the request counter sits after the budget check, so it can never disagree with the hard cap |
+
 ## Self-check (10.3a)
 9. Why are infrastructure errors not a bar in the failure-category chart?
 10. A skipped run has `llm_calls: null`. Why is it drawn as no bar instead of a 0 bar?
@@ -145,3 +166,9 @@ code really changed.
 17. Why can the dashboard not start a real run by itself, even if the page has a bug?
 18. Why is the Start button disabled after you change the repeats?
 19. What does the job page do when the server says "finished"?
+
+## Self-check (R1)
+20. Why do components say `bg-surface` instead of `bg-white`?
+21. What would a dark-mode user see without the script in index.html?
+22. Why is an unavailable metric shown as "Not available" and not 0?
+23. How do we know /design is not in the production build?

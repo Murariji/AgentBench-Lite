@@ -4,8 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AgentBench-Lite</title>
+    <!-- No-flash theme (R1): runs BEFORE anything is drawn, so a dark-mode user never sees a white flash.
+         Same rules as src/theme/theme.ts (theme.test.tsx checks they agree). Storage errors -> "system". -->
+    <script id="theme-init">
+      (function () {
+        var pref = "system";
+        try {
+          var saved = window.localStorage.getItem("agentbench-theme");
+          if (saved === "light" || saved === "dark" || saved === "system") pref = saved;
+        } catch (e) {}
+        var systemDark = typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = pref === "system" ? (systemDark ? "dark" : "light") : pref;
+        document.documentElement.setAttribute("data-theme", theme);
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
   </head>
-  <body class="bg-slate-50 text-slate-900">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -29,8 +29,8 @@ function MeasureTable({ m }: { m: Measure }) {
       <table className="w-full text-left text-sm" aria-label="measure by agent and tools">
         <tbody>
           {cols.map(([label, cell]) => (
-            <tr key={label} className="border-t border-slate-100">
-              <th className="py-1 pr-4 font-normal text-slate-500">{label}</th>
+            <tr key={label} className="border-t border-border">
+              <th className="py-1 pr-4 font-normal text-muted">{label}</th>
               {m.groups.map((g, i) => <td key={i} className="py-1 pr-4">{cell(g)}</td>)}
             </tr>
           ))}
@@ -50,15 +50,15 @@ export function TaskHistoryPage() {
 
   return (
     <div className="space-y-4">
-      <Link to="/" className="text-sm text-sky-700 hover:underline">← all runs</Link>
-      <h2 className="text-lg font-semibold">Task <span className="font-mono">{taskId}</span> across runs</h2>
+      <Link to="/runs" className="text-sm text-accent hover:underline">← all runs</Link>
+      <h2 className="text-title">Task <span className="font-mono">{taskId}</span> across runs</h2>
 
       <Loaded state={history}>
         {({ items, pagination }) => {
           const bars = historyBars(items);
           const summary = `LLM calls per run, oldest first: ${bars.map((b) => `${b.label} ${b.outcome} ${b.llmCalls ?? "not run"}`).join("; ")}.`;
           return items.length === 0 ? (
-            <p className="rounded border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500">No stored runs of this task yet.</p>
+            <p className="rounded border border-dashed border-border-strong bg-surface p-6 text-center text-muted">No stored runs of this task yet.</p>
           ) : (
             <>
               <Card title={`LLM calls per run (this page: ${items.length} of ${pagination.total})`}>
@@ -70,29 +70,29 @@ export function TaskHistoryPage() {
                     <YAxis allowDecimals={false} />
                     <Tooltip />
                     <Bar dataKey="llmCalls" name="LLM calls" isAnimationActive={false}>
-                      {bars.map((b) => <Cell key={b.key} fill={OUTCOME_COLOR[b.outcome] ?? "#64748b"} />)}
+                      {bars.map((b) => <Cell key={b.key} fill={OUTCOME_COLOR[b.outcome] ?? "rgb(var(--neutral-fg))"} />)}
                     </Bar>
                   </BarChart>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Colour = outcome: <span className="text-emerald-700">passed</span>, <span className="text-red-700">failed</span>,{" "}
-                  <span className="text-amber-700">infra error</span>; skipped runs have no bar. Each bar is a separate run (no line implied).
+                <p className="mt-1 text-[13px] text-muted">
+                  Colour = outcome: <span className="text-success-fg">passed</span>, <span className="text-danger-fg">failed</span>,{" "}
+                  <span className="text-warning-fg">infra error</span>; skipped runs have no bar. Each bar is a separate run (no line implied).
                 </p>
               </Card>
 
               <Card title="History (newest first)">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm" aria-label="task history">
-                    <thead className="text-xs uppercase text-slate-500">
+                    <thead className="text-[13px] uppercase text-muted">
                       <tr><th className="py-1 pr-3">Run</th><th className="pr-3">Started</th><th className="pr-3">Agent</th>
                         <th className="pr-3">Tools</th><th className="pr-3">Task ver.</th><th className="pr-3">Rep</th>
                         <th className="pr-3">Outcome</th><th className="pr-3">LLM calls</th><th>Answer / reason</th></tr>
                     </thead>
                     <tbody>
                       {items.map((h, i) => (
-                        <tr key={`${h.suite_id}-${h.repeat}-${i}`} className="border-t border-slate-100">
+                        <tr key={`${h.suite_id}-${h.repeat}-${i}`} className="border-t border-border">
                           <td className="py-1 pr-3 font-mono">
-                            <Link to={`/suites/${h.suite_id}`} className="text-sky-700 hover:underline" title="run details (trace one click away)">{short(h.suite_id)}</Link>
+                            <Link to={`/suites/${h.suite_id}`} className="text-accent hover:underline" title="run details (trace one click away)">{short(h.suite_id)}</Link>
                           </td>
                           <td className="pr-3 whitespace-nowrap">{utc(h.started_at)}</td>
                           <td className="pr-3"><KindBadge kind={h.provider === "fake" ? "scripted" : "real"} /> {h.model}</td>
@@ -108,7 +108,7 @@ export function TaskHistoryPage() {
                   </table>
                 </div>
                 <nav className="mt-2 flex items-center justify-between text-sm" aria-label="history pages">
-                  <span className="text-slate-500">{pagination.offset + 1}–{pagination.offset + pagination.returned} of {pagination.total}</span>
+                  <span className="text-muted">{pagination.offset + 1}–{pagination.offset + pagination.returned} of {pagination.total}</span>
                   <span className="flex gap-2">
                     <button disabled={pagination.offset === 0} onClick={() => go(Math.max(0, offset - PAGE_SIZE))} className="rounded border px-3 py-1 disabled:opacity-40">Previous</button>
                     <button disabled={pagination.next_offset === null} onClick={() => pagination.next_offset !== null && go(pagination.next_offset)} className="rounded border px-3 py-1 disabled:opacity-40">Next</button>
@@ -125,7 +125,7 @@ export function TaskHistoryPage() {
           {(m) => (
             <>
               <MeasureTable m={m} />
-              <div role="note" className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm">
+              <div role="note" className="mt-3 rounded border border-warning-fg/40 bg-warning-bg p-3 text-sm">
                 <p className="font-semibold">Limitations - read before drawing conclusions:</p>
                 <ul className="mt-1 list-disc pl-5">{m.limitations.map((l) => <li key={l}>{l}</li>)}</ul>
               </div>

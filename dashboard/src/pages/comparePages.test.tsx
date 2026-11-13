@@ -20,7 +20,7 @@ const full = (id: string, day: number, o = {}) => summary({
 describe("pass-rate chart", () => {
   it("says honestly when no run is comparable yet (today's real data)", async () => {
     fakeFetch({ [LIST]: { body: suitePage() }, [CHART]: { body: suitePage() } });   // a subset + unknown runs
-    open("/");
+    open("/runs");
     expect(await screen.findByText(/No comparable full-suite runs yet/)).toBeInTheDocument();
     expect(screen.getByText(/whether a given run qualifies is known only after it has run/)).toBeInTheDocument();
     const data = screen.getByRole("table", { name: "pass rate over time (data)" });
@@ -32,7 +32,7 @@ describe("pass-rate chart", () => {
 
   it("calls one comparable run a baseline, not a trend", async () => {
     fakeFetch({ [LIST]: { body: suitePage() }, [CHART]: { body: page([full("aaaa0001", 1)]) } });
-    open("/");
+    open("/runs");
     expect(await screen.findByText(/one run shows a first comparable full-suite baseline, not a trend/)).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /first comparable full-suite baseline/ })).toBeInTheDocument();
   });
@@ -40,7 +40,7 @@ describe("pass-rate chart", () => {
   it("shows the server's text, never 0% for a null rate", async () => {
     const none = full("nnnn0001", 2, { pass_rate: { passed: 0, eligible: 0, rate: null, text: "0/0 (n/a)" } });
     fakeFetch({ [LIST]: { body: suitePage() }, [CHART]: { body: page([full("aaaa0001", 1), none]) } });
-    open("/");
+    open("/runs");
     const data = await screen.findByRole("table", { name: "pass rate over time (data)" });
     expect(data).toHaveTextContent("2/2 (100.0%)");
     expect(data).not.toHaveTextContent("nnnn0001");
@@ -55,7 +55,7 @@ describe("pass-rate chart", () => {
         body: page(pageOf(k * 100), { offset: k * 100, total: 640, returned: 100, next_offset: (k + 1) * 100 }) };
     }
     const { calls } = fakeFetch(replies);
-    open("/");
+    open("/runs");
     expect(await screen.findByText("Showing only the latest 500 of 640 runs.")).toBeInTheDocument();
     expect(calls.filter((c) => c.startsWith("/suites?limit=100"))).toHaveLength(5);       // stopped at 500
   });
@@ -63,7 +63,7 @@ describe("pass-rate chart", () => {
   it("shows scripted runs only when asked", async () => {
     const scripted = full("ssss0001", 1, { kind: "scripted", provider: "fake", model: "scripted-careful-v1" });
     fakeFetch({ [LIST]: { body: suitePage() }, [CHART]: { body: page([scripted]) } });
-    open("/");
+    open("/runs");
     expect(await screen.findByText("1 scripted run(s) hidden.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: /Include SCRIPTED runs/ }));
     expect(await screen.findByRole("table", { name: "pass rate over time (data)" })).toHaveTextContent("SCRIPTED scripted-careful-v1");
@@ -81,7 +81,7 @@ describe("choosing runs to compare", () => {
   it("disables Compare for different suites and opens the page for one suite", async () => {
     fakeFetch({ [LIST]: { body: suitePage() }, [CHART]: { body: suitePage() },
                 "/compare?ids=0af951e0aaaabbbbccccddddeeeeffff&ids=743cde41aaaabbbbccccddddeeeeffff": { body: compareOut() } });
-    open("/");
+    open("/runs");
     const table = await screen.findByRole("table", { name: "runs" });
     const button = screen.getByRole("button", { name: /Compare \(/ });
     fireEvent.click(within(table).getByRole("checkbox", { name: "select f8e7c26f for comparison" }));    // shop-hard

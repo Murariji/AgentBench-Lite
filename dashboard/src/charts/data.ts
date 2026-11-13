@@ -31,5 +31,5 @@ export function historyBars(items: HistoryEntry[]): HistoryBar[] {
 }
 
 export const OUTCOME_COLOR: Record<string, string> = {
-  passed: "#059669", failed: "#dc2626", infra_error: "#d97706", skipped: "#94a3b8",
+  passed: "rgb(var(--success-fg))", failed: "rgb(var(--danger-fg))", infra_error: "rgb(var(--chart-mark))", skipped: "rgb(var(--muted))",   // theme tokens
 };

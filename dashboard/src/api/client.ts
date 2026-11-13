@@ -22,6 +22,9 @@ export type Compare = Schemas["CompareOut"];
 export type RunRequest = Schemas["RunIn"];
 export type Estimate = Schemas["EstimateOut"];
 export type Job = Schemas["JobOut"];
+export type JobList = Schemas["JobPage"];
+export type RegisteredSuite = Schemas["RegisteredSuiteOut"];
+export type ChartRuns = { items: SuiteSummary[]; total: number; capped: boolean };
 
 /** The suites the server knows today (agentbench.suites.SUITES). The server still validates every request. */
 export const SUITES = ["shop-hard", "shop"] as const;
@@ -33,7 +36,7 @@ const CHART_PAGE = 100;              // the API's maximum page size
 
 /** All runs for the chart: follows the server's next_offset, stopping at CHART_RUN_LIMIT.
  *  `total` is the server's count, so the page can say "showing the latest 500 of N". */
-export async function fetchRunsForChart(): Promise<{ items: SuiteSummary[]; total: number; capped: boolean }> {
+export async function fetchRunsForChart(): Promise<ChartRuns> {
   const items: SuiteSummary[] = [];
   let offset: number | null = 0;
   let total = 0;
@@ -126,6 +129,10 @@ export const api = {
   estimate: (body: RunRequest) => request<Estimate>("/estimates", { method: "POST", body: JSON.stringify(body) }),
   /** POST /runs - starts the run in the background on the server (all safety gates are checked THERE). */
   startRun: (body: RunRequest) => request<Job>("/runs", { method: "POST", body: JSON.stringify(body) }),
+  /** GET /registrations - the pre-registered suites (fixed task definitions). */
+  registrations: () => request<RegisteredSuite[]>("/registrations"),
+  /** GET /runs - jobs started since THIS server started (job status is memory-only). */
+  jobs: () => request<JobList>("/runs?limit=20&offset=0"),
   /** GET /runs/{job_id} - the job's progress (kept in the server's memory only). */
   job: (jobId: string) => request<Job>(`/runs/${encodeURIComponent(jobId)}`),
 };

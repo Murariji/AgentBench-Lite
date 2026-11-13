@@ -41,6 +41,41 @@ Python: 720 passed — when run by Claude; user to confirm).
 - Today's real data has no comparable trend yet (pilot is a subset, `shop` runs are unregistered), so the chart
   shows markers and says so. Known: bundle 606 KB (Recharts) — lazy-loading planned for 10.5.
 
+**Redesign R2–R6 (whole dashboard): ✅ complete** (dashboard: 144 passed, type check clean, build OK - first load
+188 KB instead of 620 KB, no size warning; Python: 723 passed — when run by Claude; user to confirm).
+- Shell: persistent sidebar (Overview, Runs, Compare, Start a run, API connection; menu on small screens), top bar
+  with the page title, API status (GET /health every 30 s) and the theme switcher, skip link, full-width layout.
+  Every page is themed (the R1 light lock is gone) and loaded on demand; Recharts only on chart pages.
+- Overview (`/`): server counts only (stored runs, real runs, registered suites, latest real full-suite run, active
+  run), pass-rate chart, suites (registered / unregistered, unknown tools), recent runs. Unloadable = "Not available".
+- Runs (`/runs`): table + chart share ONE load of the latest <= 500 runs; filters (suite, real/scripted, scope,
+  status) in the URL, with the note "Filters apply to the N run(s) loaded"; pages of 20; Compare selection kept.
+- Start a run: guided steps Configure -> Estimate -> Confirm & start -> Running -> Results; ticking the confirmation
+  asks the server again, so Start needs the server's yes for exactly that request.
+- Live progress (contract change, additive): JobOut `current_step`, `total_steps` (a limit), `llm_calls_used`
+  (every retry included; counted behind the hard budget, so it equals the budget's own count). The job page shows
+  a live dot, an elapsed clock, task/step, requests vs budget, finished-task lines and the browser-tab progress.
+- Compare opened from the sidebar explains how to choose runs (no empty request).
+- Sabotage checks (5): retries not counted, unloadable value shown as 0, confirmation not re-checked, filters
+  ignored, invented step - each caught; restored.
+
+**Step R1 Redesign foundation (light + dark themes): ✅ complete** (dashboard: 131 passed, type check clean,
+build OK with the dev-only check; no backend change). Approved design: preview canvas (claude.ai artifact).
+- Design tokens = CSS variables in `src/index.css` (one block per theme, same names); Tailwind maps them
+  (`bg-surface`, `text-fg`, `bg-success-bg text-success-fg`, ...). Inter (Latin) via @fontsource, lucide-react
+  icons, @testing-library/user-event (all exact versions, free).
+- Theme: `src/theme/` (pure rules, ThemeProvider, ThemeSwitcher Light/System/Dark); System follows the OS live;
+  choice saved in localStorage (blocked storage -> System); no-flash script in `index.html`.
+- Base components: Button, Field/Input/Select/Checkbox, Card/MetricCard (null = "Not available", never 0),
+  Alert, EmptyState, Skeleton, ErrorState, StatusDot, ProgressBar, DataTable; badges restyled with the SAME labels.
+- `/design` gallery (both themes side by side) exists only in development; `scripts/check-dev-only.mjs` fails
+  the build if it reaches the production bundle.
+- Existing pages stay LOCKED to the light tokens (`data-theme="light"` wrapper) until R2-R5 migrate them.
+- Tests: contrast (WCAG, read from index.css, both themes), no-flash script = app rules, System detection +
+  live change, persistence across refresh, keyboard switching, blocked storage. Sabotage checks (6): faint
+  dark text, script defaulting to light, choice not saved, OS change ignored, null shown as 0, /design leaking
+  into the build - each caught; restored.
+
 **Step 10.4 Start-a-run page: ✅ complete** (dashboard: 61 passed, type check clean; Python: 720 passed —
 when run by Claude; user to confirm). No backend change.
 - `/runs/new`: agent (Gemini REAL by default, or a SCRIPTED test agent), suite, optional tasks, repeats, and
@@ -684,7 +719,8 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 10, Step 10.5 polish (lazy-load charts, screenshots) — waits for approval.
+User review of the redesigned dashboard (both themes). Then: README screenshots, Phase 11 (Docker), and the
+improvements noted earlier (a harder suite or a second free model: every real run so far scores 100%).
 Recommended real run (user starts it): `python scripts/serve_api.py --allow-real-runs`, then shop-hard from
 the Start-a-run page (A.4 Stage 2, budget 100). Then 10.5 polish (lazy-load charts, screenshots). In parallel: A.4 Stage 2.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,

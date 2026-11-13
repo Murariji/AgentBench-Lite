@@ -12,23 +12,23 @@ const REGISTRATION_TONE: Record<string, "green" | "amber" | "red" | "slate"> = {
 
 function RegistrationBanner({ registration }: { registration: SuiteDetail["registration"] }) {
   const color = REGISTRATION_TONE[registration.status] ?? "slate";
-  const box = { green: "border-emerald-200 bg-emerald-50", amber: "border-amber-300 bg-amber-50",
-                red: "border-red-300 bg-red-50", slate: "border-slate-200 bg-slate-50" }[color];
+  const box = { green: "border-success-fg/30 bg-success-bg", amber: "border-warning-fg/40 bg-warning-bg",
+                red: "border-danger-fg/40 bg-danger-bg", slate: "border-border bg-surface-2" }[color];
   return (
     <div className={`rounded border p-3 text-sm ${box}`} data-testid="registration">
       <Badge color={color}>registration: {registration.status}</Badge>
       <p className="mt-1">{registration.line}</p>
-      {registration.problems.map((p) => <p key={p} className="mt-1 text-red-800">• {p}</p>)}
+      {registration.problems.map((p) => <p key={p} className="mt-1 text-danger-fg">• {p}</p>)}
     </div>
   );
 }
 
 function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded border border-slate-100 p-3">
-      <p className="text-xs uppercase text-slate-500">{label}</p>
+    <div className="rounded border border-border p-3">
+      <p className="text-[13px] uppercase text-muted">{label}</p>
       <p className="text-lg font-semibold">{value}</p>
-      {hint && <p className="text-xs text-slate-500">{hint}</p>}
+      {hint && <p className="text-[13px] text-muted">{hint}</p>}
     </div>
   );
 }
@@ -38,21 +38,21 @@ function Details({ s }: { s: SuiteDetail }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold">{s.suite_name} · run {short(s.suite_id)}</h2>
+        <h2 className="text-title">{s.suite_name} · run {short(s.suite_id)}</h2>
         <KindBadge kind={s.kind} />
         <CompleteBadge complete={s.complete} />
       </div>
       {s.kind !== "real" && (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted">
           SCRIPTED agent: fixed answers written in advance. This run tests the framework and says nothing about AI ability.
         </p>
       )}
       <RegistrationBanner registration={s.registration} />
       <p className="text-sm">
-        <Link to={`/suites/${s.suite_id}/failures`} className="text-sky-700 hover:underline">Failure analysis →</Link>
+        <Link to={`/suites/${s.suite_id}/failures`} className="text-accent hover:underline">Failure analysis →</Link>
       </p>
       {!s.complete && (
-        <div role="note" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+        <div role="note" className="rounded border border-warning-fg/40 bg-warning-bg p-3 text-sm">
           Incomplete: {m.infra_errors} infrastructure error(s) and {m.skipped_runs} skipped run(s) are NOT counted as
           wrong answers. {s.stop_reason && <>Stopped: <strong>{s.stop_reason}</strong>.</>}
         </div>
@@ -77,13 +77,13 @@ function Details({ s }: { s: SuiteDetail }) {
 
       <Card title="Configuration">
         <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-          <div><dt className="inline text-slate-500">Model: </dt><dd className="inline">{s.config.provider} / {s.config.model}</dd></div>
-          <div><dt className="inline text-slate-500">Started: </dt><dd className="inline">{utc(s.started_at)}</dd></div>
-          <div><dt className="inline text-slate-500">Config fingerprint: </dt><dd className="inline font-mono">{s.config_fingerprint}</dd></div>
-          <div><dt className="inline text-slate-500">Tasks fingerprint: </dt><dd className="inline font-mono">{s.tasks_fingerprint ?? "n/a"}</dd></div>
-          <div><dt className="inline text-slate-500">Dataset: </dt><dd className="inline font-mono">{s.dataset ?? "n/a"}</dd></div>
+          <div><dt className="inline text-muted">Model: </dt><dd className="inline">{s.config.provider} / {s.config.model}</dd></div>
+          <div><dt className="inline text-muted">Started: </dt><dd className="inline">{utc(s.started_at)}</dd></div>
+          <div><dt className="inline text-muted">Config fingerprint: </dt><dd className="inline font-mono">{s.config_fingerprint}</dd></div>
+          <div><dt className="inline text-muted">Tasks fingerprint: </dt><dd className="inline font-mono">{s.tasks_fingerprint ?? "n/a"}</dd></div>
+          <div><dt className="inline text-muted">Dataset: </dt><dd className="inline font-mono">{s.dataset ?? "n/a"}</dd></div>
           <div>
-            <dt className="inline text-slate-500">Tools: </dt>
+            <dt className="inline text-muted">Tools: </dt>
             <dd className="inline">
               {s.tools === null ? "not recorded (run stored before tool versions existed)"
                 : s.tools.map((t) => `${t.name} v${t.version}`).join(", ")}
@@ -95,33 +95,33 @@ function Details({ s }: { s: SuiteDetail }) {
       <Card title={`Task runs (${s.runs.length})`}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase text-slate-500">
+            <thead className="text-[13px] uppercase text-muted">
               <tr><th className="py-1 pr-3">Task</th><th className="pr-3">Level</th><th className="pr-3">Outcome</th>
                 <th className="pr-3">Answer</th><th className="pr-3">Steps</th><th className="pr-3">LLM calls</th>
                 <th className="pr-3">Retries</th><th className="pr-3">Failed checks</th><th /></tr>
             </thead>
             <tbody>
               {s.runs.map((r) => (
-                <tr key={r.run_id} className="border-t border-slate-100">
+                <tr key={r.run_id} className="border-t border-border">
                   <td className="py-1 pr-3 font-mono">
                     <Link to={`/tasks/${r.task_id}`} className="hover:underline" title="this task across all runs">{r.task_id}</Link>
                     {s.repeats > 1 && ` #${r.repeat + 1}`}
                   </td>
                   <td className="pr-3">{r.difficulty ?? "—"}</td>
-                  <td className="pr-3"><OutcomeBadge outcome={r.outcome} />{r.error_kind && <span className="ml-1 text-xs text-slate-500">{r.error_kind}</span>}</td>
+                  <td className="pr-3"><OutcomeBadge outcome={r.outcome} />{r.error_kind && <span className="ml-1 text-[13px] text-muted">{r.error_kind}</span>}</td>
                   <td className="pr-3 font-mono">{r.final_answer ?? "—"}</td>
                   <td className="pr-3">{r.steps}</td>
                   <td className="pr-3">{r.llm_calls}</td>
                   <td className="pr-3">{r.retries === null ? <span title="unknown, not zero">not recorded</span> : r.retries}</td>
-                  <td className="pr-3 text-red-800">{r.failed_checks.join(", ") || "—"}</td>
-                  <td><Link to={`/suites/${s.suite_id}/runs/${r.run_id}`} className="text-sky-700 hover:underline">trace →</Link></td>
+                  <td className="pr-3 text-danger-fg">{r.failed_checks.join(", ") || "—"}</td>
+                  <td><Link to={`/suites/${s.suite_id}/runs/${r.run_id}`} className="text-accent hover:underline">trace →</Link></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         {s.skipped.length > 0 && (
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-muted">
             Skipped (never run): {s.skipped.map((k) => `${k.task_id}${s.repeats > 1 ? ` #${k.repeat + 1}` : ""}`).join(", ")}
             {" "}— {s.skipped[0]?.reason}
           </p>
@@ -136,7 +136,7 @@ export function RunDetailsPage() {
   const suite = useApi(() => api.suite(suiteId), [suiteId]);
   return (
     <div className="space-y-3">
-      <Link to="/" className="text-sm text-sky-700 hover:underline">← all runs</Link>
+      <Link to="/runs" className="text-sm text-accent hover:underline">← all runs</Link>
       <Loaded state={suite}>{(s) => <Details s={s} />}</Loaded>
     </div>
   );

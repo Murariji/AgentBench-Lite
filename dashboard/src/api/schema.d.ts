@@ -415,6 +415,8 @@ export interface components {
             created_at: string;
             /** Current Repeat */
             current_repeat: number | null;
+            /** Current Step */
+            current_step?: number | null;
             /** Current Task */
             current_task: string | null;
             /** Error */
@@ -425,6 +427,11 @@ export interface components {
             job_id: string;
             /** Kind */
             kind: string;
+            /**
+             * Llm Calls Used
+             * @default 0
+             */
+            llm_calls_used: number;
             /** Note */
             note: string;
             /** Percent */
@@ -453,6 +460,8 @@ export interface components {
             } | null;
             /** Tasks */
             tasks: string[];
+            /** Total Steps */
+            total_steps?: number | null;
             /** Total Tasks */
             total_tasks: number;
         };

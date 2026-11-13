@@ -3,16 +3,17 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { api, type Compare } from "../api/client";
 import { useApi } from "../api/useApi";
+import { EmptyState } from "../components/feedback";
 import { Badge, Card, Loaded, OutcomeBadge } from "../components/ui";
 import { counts, num, short } from "../format";
 
 function Fairness({ c }: { c: Compare }) {
   return c.fair ? (
-    <div className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm" data-testid="fairness">
+    <div className="rounded border border-success-fg/30 bg-success-bg p-3 text-sm" data-testid="fairness">
       <Badge color="green">fair comparison</Badge> same tasks, grading, dataset and repeats (as checked by the server)
     </div>
   ) : (
-    <div className="rounded border border-red-300 bg-red-50 p-3 text-sm" data-testid="fairness">
+    <div className="rounded border border-danger-fg/40 bg-danger-bg p-3 text-sm" data-testid="fairness">
       <Badge color="red">NOT A FAIR COMPARISON</Badge> these differ: {c.unfair_dimensions.join(", ")}
     </div>
   );
@@ -32,12 +33,12 @@ function CompareView({ c }: { c: Compare }) {
   ];
   const head = (
     <tr><th className="py-1 pr-4" />{runs.map((id) => (
-      <th key={id} className="pr-4 font-mono"><Link to={`/suites/${id}`} className="text-sky-700 hover:underline">{short(id)}</Link></th>
+      <th key={id} className="pr-4 font-mono"><Link to={`/suites/${id}`} className="text-accent hover:underline">{short(id)}</Link></th>
     ))}</tr>
   );
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Compare {runs.length} runs</h2>
+      <h2 className="text-title">Compare {runs.length} runs</h2>
       <Fairness c={c} />
       <p className="text-sm">
         Tools: <strong>{c.tools_status}</strong>
@@ -54,13 +55,13 @@ function CompareView({ c }: { c: Compare }) {
       <Card title="Configuration and fairness dimensions">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm" aria-label="dimensions">
-            <thead className="text-xs uppercase text-slate-500">{head}</thead>
+            <thead className="text-[13px] uppercase text-muted">{head}</thead>
             <tbody>
               {Object.entries(c.dimensions).map(([label, values]) => {
                 const differs = new Set(values).size > 1;                   // display highlight only
                 return (
-                  <tr key={label} className={`border-t border-slate-100 ${differs ? "bg-amber-50" : ""}`} data-differs={differs}>
-                    <th className="py-1 pr-4 font-normal text-slate-500">{label}</th>
+                  <tr key={label} className={`border-t border-border ${differs ? "bg-warning-bg" : ""}`} data-differs={differs}>
+                    <th className="py-1 pr-4 font-normal text-muted">{label}</th>
                     {values.map((v, i) => <td key={i} className="pr-4 font-mono">{v === "not recorded" ? <em>not recorded</em> : v}</td>)}
                   </tr>
                 );
@@ -72,11 +73,11 @@ function CompareView({ c }: { c: Compare }) {
 
       <Card title="Results (the server's counts)">
         <table className="w-full text-left text-sm" aria-label="metrics">
-          <thead className="text-xs uppercase text-slate-500">{head}</thead>
+          <thead className="text-[13px] uppercase text-muted">{head}</thead>
           <tbody>
             {metricRows.map(([label, cell]) => (
-              <tr key={label} className="border-t border-slate-100">
-                <th className="py-1 pr-4 font-normal text-slate-500">{label}</th>
+              <tr key={label} className="border-t border-border">
+                <th className="py-1 pr-4 font-normal text-muted">{label}</th>
                 {runs.map((id, i) => <td key={id} className="pr-4">{cell(i)}</td>)}
               </tr>
             ))}
@@ -86,12 +87,12 @@ function CompareView({ c }: { c: Compare }) {
 
       <Card title="Per task (first repeat of each run)">
         <table className="w-full text-left text-sm" aria-label="per task">
-          <thead className="text-xs uppercase text-slate-500">{head}</thead>
+          <thead className="text-[13px] uppercase text-muted">{head}</thead>
           <tbody>
             {c.tasks.map((t) => (
-              <tr key={t.task_id} className={`border-t border-slate-100 ${t.differs ? "bg-amber-50" : ""}`}>
+              <tr key={t.task_id} className={`border-t border-border ${t.differs ? "bg-warning-bg" : ""}`}>
                 <th className="py-1 pr-4 font-mono font-normal">
-                  {t.task_id}{t.differs && <span className="ml-1 text-xs text-amber-800">differs</span>}
+                  {t.task_id}{t.differs && <span className="ml-1 text-[13px] text-warning-fg">differs</span>}
                 </th>
                 {t.outcomes.map((o, i) => <td key={i} className="pr-4">{o === "skipped" ? <Badge color="slate">skipped</Badge> : <OutcomeBadge outcome={o} />}</td>)}
               </tr>
@@ -107,11 +108,23 @@ export function ComparePage() {
   const [params] = useSearchParams();
   const ids = params.getAll("ids");
   const key = ids.join(",");
-  const compare = useApi(() => api.compare(ids), [key]);
+  // Opened from the sidebar with nothing selected: explain how to choose runs (no request is sent).
+  const compare = useApi(() => (ids.length ? api.compare(ids) : Promise.resolve(null)), [key]);
   return (
-    <div className="space-y-3">
-      <Link to="/" className="text-sm text-sky-700 hover:underline">← all runs</Link>
-      <Loaded state={compare}>{(c) => <CompareView c={c} />}</Loaded>
+    <div className="flex flex-col gap-4">
+      <Link to="/runs" className="text-sm font-medium text-accent hover:underline">← all runs</Link>
+      {ids.length === 0 ? (
+        <>
+          <h1 className="text-title">Compare runs</h1>
+          <EmptyState title="Choose 2 to 5 runs of one suite"
+                      action={<Link to="/runs" className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-on-accent">Go to Runs</Link>}>
+            Tick runs in the Runs table and press Compare. The server checks whether the comparison is fair and
+            writes the conclusions; this page shows them word for word.
+          </EmptyState>
+        </>
+      ) : (
+        <Loaded state={compare}>{(c) => (c ? <CompareView c={c} /> : null)}</Loaded>
+      )}
     </div>
   );
 }

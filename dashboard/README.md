@@ -45,10 +45,15 @@ TypeScript then shows every place in the dashboard that must follow the change.
 | `src/api/client.ts` | the only code that calls the API; one `ApiError` for every failure |
 | `src/api/useApi.ts` | a small hook: loading / error / ready state for one request |
 | `src/api/schema.d.ts` | generated TypeScript types (from `openapi.json`) |
-| `src/pages/` | Runs (`/`, with the pass-rate chart and run selection), compare (`/compare?ids=..`), start a run (`/runs/new`), run job progress (`/jobs/:jobId`), run details (`/suites/:id`), trace viewer (`/suites/:id/runs/:runId`), failures (`/suites/:id/failures`), task history (`/tasks/:taskId`), connection |
+| `src/components/AppShell.tsx` | sidebar, top bar (page title, API status, theme switcher), page loading |
+| `src/pages/` | Overview (`/`), Runs (`/runs`, chart + filters + run selection), compare (`/compare?ids=..`), start a run (`/runs/new`), live run progress (`/jobs/:jobId`), run details (`/suites/:id`), trace viewer (`/suites/:id/runs/:runId`), failures (`/suites/:id/failures`), task history (`/tasks/:taskId`), connection |
 | `src/charts/data.ts` | pure functions that only RESHAPE API data for charts (never compute metrics) |
 | `src/charts/trend.ts` | pure grouping for the pass-rate chart: six-part key, which runs may be connected, baseline |
 | `src/components/TrendChart.tsx` | the pass-rate-over-time chart, its data table, the 500-run note and the scripted toggle |
+| `src/index.css` | design tokens: one block per theme (light, dark), the same names in both |
+| `src/theme/` | theme rules, `ThemeProvider` (`useTheme()`), `ThemeSwitcher` (Light / System / Dark) |
+| `src/components/` | base components: Button, form controls, Card/MetricCard, feedback states, DataTable |
+| `src/design/DesignPage.tsx` | `/design` gallery of every component in both themes - development only |
 | `src/components/ui.tsx` | badges (REAL/SCRIPTED, outcome, complete), card, loading/error box |
 | `src/format.ts` | display only: UTC times, `n/a` for unknown values, server counts |
 | `src/test/` | test setup, a fake `fetch`, and fixtures typed with the contract types |

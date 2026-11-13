@@ -345,11 +345,13 @@
     "completed_tasks": "integer",
     "created_at": "string",
     "current_repeat": "integer|null",
+    "current_step": "integer|null",
     "current_task": "null|string",
     "error": "null|string",
     "finished_at": "null|string",
     "job_id": "string",
     "kind": "string",
+    "llm_calls_used": "integer",
     "note": "string",
     "percent": "number",
     "progress": "array[string]",
@@ -363,6 +365,7 @@
     "suite_id": "null|string",
     "summary": "null|object",
     "tasks": "array[string]",
+    "total_steps": "integer|null",
     "total_tasks": "integer"
    },
    "required": [

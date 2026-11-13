@@ -11,5 +11,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    // R1: keep the real text of index.css in tests (vitest blanks CSS by default) - contrast.test.ts reads its tokens.
+    css: { include: [/index\.css/] },
   },
 });

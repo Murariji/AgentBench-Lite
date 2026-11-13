@@ -2,3 +2,121 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------------------------------------------------------------------------------------------
+   DESIGN TOKENS - the ONE source of truth for both themes (R1).
+   Every value is "R G B" (no commas) so Tailwind can add opacity: rgb(var(--accent) / 0.5).
+   Components never use raw colours: they use these names through tailwind.config.js
+   (bg-surface, text-fg, border-border, ...), so every component supports both themes.
+   src/theme/contrast.test.ts reads THIS file and checks WCAG contrast for both themes.
+   --------------------------------------------------------------------------------------------- */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: 247 248 250;
+  --surface: 255 255 255;
+  --surface-2: 241 243 246;
+  --border: 227 230 235;
+  --border-strong: 213 218 225;
+  --fg: 15 23 41;
+  --muted: 91 101 118;
+  --accent: 79 91 213;
+  --on-accent: 255 255 255;
+  --accent-soft: 238 240 253;
+  --success-bg: 230 246 236;
+  --success-fg: 22 101 52;
+  --warning-bg: 254 243 215;
+  --warning-fg: 138 75 0;
+  --danger-bg: 253 232 232;
+  --danger-fg: 180 35 24;
+  --danger-solid: 180 35 24;
+  --on-danger: 255 255 255;
+  --info-bg: 232 238 255;
+  --info-fg: 44 70 184;
+  --neutral-bg: 238 240 243;
+  --neutral-fg: 71 84 103;
+  --ok-dot: 22 163 74;
+  --off-dot: 152 162 179;
+  --chart-grid: 237 240 243;
+  --chart-axis: 201 207 216;
+  --chart-mark: 178 106 0;
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.07);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: 11 13 18;
+  --surface: 18 21 28;
+  --surface-2: 24 28 37;
+  --border: 38 43 54;
+  --border-strong: 50 56 70;
+  --fg: 230 232 238;
+  --muted: 154 163 178;
+  --accent: 139 153 255;
+  --on-accent: 11 13 18;
+  --accent-soft: 28 33 64;
+  --success-bg: 18 48 31;
+  --success-fg: 110 231 160;
+  --warning-bg: 51 39 15;
+  --warning-fg: 251 191 77;
+  --danger-bg: 58 21 24;
+  --danger-fg: 255 138 138;
+  --danger-solid: 248 113 113;
+  --on-danger: 26 11 11;
+  --info-bg: 23 36 71;
+  --info-fg: 157 184 255;
+  --neutral-bg: 35 38 46;
+  --neutral-fg: 180 188 200;
+  --ok-dot: 74 222 128;
+  --off-dot: 107 115 131;
+  --chart-grid: 30 35 46;
+  --chart-axis: 58 65 80;
+  --chart-mark: 251 191 77;
+  --shadow-card: none; /* dark cards are separated by surface + border, not shadows */
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+  }
+  /* One visible focus ring for every keyboard-focusable element, in both themes. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+  }
+}
+
+/* Charts (Recharts draws SVG with fixed grey defaults): axes, grid, legend and default tooltips follow the theme. */
+.recharts-cartesian-axis-tick-value,
+.recharts-text { fill: rgb(var(--muted)); }
+.recharts-cartesian-grid line,
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line { stroke: rgb(var(--chart-grid)); }
+.recharts-legend-item-text { color: rgb(var(--fg)) !important; }
+.recharts-default-tooltip {
+  background: rgb(var(--surface)) !important;
+  border: 1px solid rgb(var(--border-strong)) !important;
+  border-radius: 8px;
+  color: rgb(var(--fg));
+}
+.recharts-tooltip-cursor { fill: rgb(var(--surface-2)); }
+
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(var(--accent) / 0.55); }
+  70% { box-shadow: 0 0 0 8px rgb(var(--accent) / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(var(--accent) / 0); }
+}
+.live-dot { animation: live-pulse 1.8s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -212,7 +212,7 @@ export const jobOut = (o: Partial<Schemas["JobOut"]> = {}): Schemas["JobOut"] =>
   created_at: "2026-11-13T10:00:00Z", started_at: "2026-11-13T10:00:01Z", finished_at: null,
   completed_tasks: 1, total_tasks: 2, percent: 50, current_task: "hard-002", current_repeat: 1,
   progress: ["hard-001 #1: passed (5 requests)"], suite_id: null, saved: null, save_error: null, recovery_path: null,
-  error: null, summary: null,
+  error: null, summary: null, current_step: 2, total_steps: 10, llm_calls_used: 7,
   note: "Job status is kept in memory only and is lost when the server stops. Finished benchmark results are stored.",
   ...o,
 });

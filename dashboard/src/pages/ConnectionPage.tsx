@@ -4,8 +4,8 @@ import { useApi } from "../api/useApi";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex justify-between gap-6 border-b border-slate-100 py-2 last:border-0">
-      <dt className="text-slate-500">{label}</dt>
+    <div className="flex justify-between gap-6 border-b border-border py-2 last:border-0">
+      <dt className="text-muted">{label}</dt>
       <dd className="text-right font-medium">{children}</dd>
     </div>
   );
@@ -15,19 +15,19 @@ export function ConnectionPage() {
   const health = useApi(api.health);
 
   return (
-    <section className="mx-auto max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-1 text-lg font-semibold">API connection</h2>
-      <p className="mb-4 text-sm text-slate-500">
+    <section className="mx-auto max-w-xl rounded-lg border border-border bg-surface p-6 shadow-sm">
+      <h2 className="mb-1 text-title">API connection</h2>
+      <p className="mb-4 text-sm text-muted">
         The dashboard only displays what the API returns. Address: <code>{API_BASE}</code>
       </p>
 
       {health.status === "loading" && <p role="status">Connecting…</p>}
 
       {health.status === "error" && (
-        <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div role="alert" className="rounded border border-danger-fg/30 bg-danger-bg p-3 text-sm text-danger-fg">
           <p className="font-semibold">Not connected ({health.error.code})</p>
           <p className="mt-1">{health.error.message}</p>
-          <button onClick={health.reload} className="mt-3 rounded bg-red-700 px-3 py-1 text-white hover:bg-red-800">
+          <button onClick={health.reload} className="mt-3 rounded bg-danger-solid px-3 py-1 text-on-danger hover:bg-danger-solid/90">
             Try again
           </button>
         </div>
@@ -35,7 +35,7 @@ export function ConnectionPage() {
 
       {health.status === "ready" && (
         <>
-          <p role="status" className="mb-3 inline-block rounded bg-emerald-100 px-2 py-0.5 text-sm text-emerald-800">
+          <p role="status" className="mb-3 inline-block rounded bg-success-bg px-2 py-0.5 text-sm text-success-fg">
             Connected
           </p>
           <dl className="text-sm">
@@ -43,13 +43,13 @@ export function ConnectionPage() {
             <Row label="Results database schema">version {health.data.schema_version}</Row>
             <Row label="Real Gemini runs">
               {health.data.real_runs_enabled ? (
-                <span className="rounded bg-amber-100 px-2 py-0.5 text-amber-900">ENABLED on this server</span>
+                <span className="rounded bg-warning-bg px-2 py-0.5 text-warning-fg">ENABLED on this server</span>
               ) : (
-                <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-700">disabled (scripted runs only)</span>
+                <span className="rounded bg-surface-2 px-2 py-0.5 text-muted">disabled (scripted runs only)</span>
               )}
             </Row>
           </dl>
-          <button onClick={health.reload} className="mt-4 text-sm text-slate-600 underline hover:text-slate-900">
+          <button onClick={health.reload} className="mt-4 text-sm text-muted underline hover:text-fg">
             Check again
           </button>
         </>

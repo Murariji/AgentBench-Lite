@@ -281,6 +281,10 @@ class JobOut(BaseModel):
     error: str | None
     summary: dict | None
     note: str                                        # job status is temporary; results are not
+    # Live progress (R4). Never invented: null when there is no run in progress.
+    current_step: int | None = None                  # 1-based step of the run in progress
+    total_steps: int | None = None                   # that task's step LIMIT (max_steps), not a prediction
+    llm_calls_used: int = 0                          # requests sent so far in this job, EVERY retry included
 
 
 class JobPage(BaseModel):

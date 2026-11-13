@@ -344,3 +344,39 @@ def test_estimates(tmp_path, shop_db):
     assert len(reasons) == 2
     assert fake.calls == 0                                                      # estimates never build a client
     error(client.post("/estimates", json={"agent": "careful", "tasks": ["nope"]}), 422, "validation_error")
+
+
+# ---------- live progress (redesign R4): steps and requests, never invented -------------------------------
+
+def test_live_progress_counts_steps_and_requests_while_running(tmp_path, shop_db):
+    fake = FakeReal(block="hard-007")
+    app, client = make(tmp_path, shop_db, allow=True, fake=fake)
+    job_id = client.post("/runs", json=REAL_PILOT).json()["job_id"]
+    assert fake.started.wait(10)                          # hard-001 finished; hard-007's FIRST request is waiting
+    job = client.get(f"/runs/{job_id}").json()
+    assert (job["current_task"], job["current_step"], job["total_steps"]) == ("hard-007", 1, 10)   # 10 = a limit
+    assert job["llm_calls_used"] == len(CAREFUL["hard-001"]) + 1                 # every request sent so far
+    fake.release.set()
+    done = wait(client, job_id)
+    assert (done["current_step"], done["total_steps"]) == (None, None)          # no run in progress: unknown
+    stored = client.get(f"/suites/{done['suite_id']}").json()
+    assert done["llm_calls_used"] == stored["metrics"]["total_llm_calls"] == done["summary"]["requests"]
+
+
+def test_live_request_count_includes_retries(tmp_path, shop_db):
+    retry = LLMError("429 slow down", kind="rate_limit", retry_after=0)
+    fake = FakeReal(scripts={"hard-001": [retry] + CAREFUL["hard-001"]})
+    app, client = make(tmp_path, shop_db, allow=True, fake=fake)
+    done = wait(client, client.post("/runs", json=REAL_PILOT).json()["job_id"])
+    stored = client.get(f"/suites/{done['suite_id']}").json()
+    expected = len(CAREFUL["hard-001"]) + 1 + len(CAREFUL["hard-007"])          # the retried request counts
+    assert done["status"] == "finished"
+    assert done["llm_calls_used"] == stored["metrics"]["total_llm_calls"] == expected
+    assert done["llm_calls_used"] <= REAL_PILOT["budget"]                       # the same count the hard cap uses
+
+
+def test_scripted_jobs_report_their_calls_too(tmp_path, shop_db):
+    app, client = make(tmp_path, shop_db)
+    done = wait(client, client.post("/runs", json={"agent": "careful", "suite": "shop-hard"}).json()["job_id"])
+    stored = client.get(f"/suites/{done['suite_id']}").json()
+    assert done["llm_calls_used"] == stored["metrics"]["total_llm_calls"] and done["budget"] is None

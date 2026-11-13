@@ -1,12 +1,24 @@
-// Step 10.4: follow a started run. Asks GET /runs/{job_id} again every `pollMs` while the job is queued or
-// running ("polling"), and stops as soon as the server says it is done. Shows the server's own progress
-// numbers and lines; computes nothing. Job status lives in the server's memory only - the RESULTS are stored.
+// Follow a started run LIVE. Asks GET /runs/{job_id} again every `pollMs` while the job is queued or running
+// ("polling") and stops as soon as the server says it is done. Shows the server's own numbers: progress,
+// current task and step, requests used (retries included) against the budget. The elapsed clock counts from
+// the server's started_at. Nothing is estimated or invented. Job status lives in the server's memory only -
+// the RESULTS are stored.
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ACTIVE_JOB_STATES, ApiError, api, type Job } from "../api/client";
-import { Badge, Card, KindBadge } from "../components/ui";
+import { Card } from "../components/Card";
+import { Alert, ErrorState, ProgressBar, Skeleton } from "../components/feedback";
+import { RUN_STEPS, Stepper } from "../components/Stepper";
+import { Badge, KindBadge } from "../components/ui";
 
 type State = { status: "loading" } | { status: "error"; error: ApiError } | { status: "ready"; job: Job };
+
+/** "2:05" from milliseconds (a clock, not a benchmark metric). */
+export function clock(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${m}:${String(sec).padStart(2, "0")}`;
+}
 
 function StatusBadge({ status }: { status: string }) {
   if (status === "finished") return <Badge color="green">finished</Badge>;
@@ -15,24 +27,92 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge color="blue">{status}</Badge>;
 }
 
+/** Ticks every second while the job runs, so the elapsed time visibly moves. */
+function useNow(running: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+  return now;
+}
+
+function Live({ job }: { job: Job }) {
+  const running = ACTIVE_JOB_STATES.includes(job.status);
+  const now = useNow(running);
+  const started = job.started_at ? Date.parse(job.started_at) : null;
+  const ended = job.finished_at ? Date.parse(job.finished_at) : null;
+  const elapsed = started === null ? null : (ended ?? now) - started;
+  const position = Math.min(job.completed_tasks + 1, job.total_tasks);
+
+  return (
+    <Card>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {running && <span aria-hidden="true" className="live-dot h-2.5 w-2.5 rounded-full bg-accent" />}
+          <span className="text-base font-semibold" data-testid="live-status">
+            {job.status === "queued" ? "Waiting to start…" : running ? "Running" : job.status === "finished" ? "Finished" : job.status === "incomplete" ? "Stopped early" : "Failed"}
+          </span>
+          <KindBadge kind={job.kind} />
+          <span className="ml-auto text-base font-semibold tabular-nums" data-testid="elapsed">
+            {elapsed === null ? "not started yet" : `${running ? "Elapsed" : "Took"} ${clock(elapsed)}`}
+          </span>
+        </div>
+
+        <p className="text-sm" data-testid="now">
+          {running && job.current_task
+            ? <>Task {position} of {job.total_tasks}: <span className="font-mono">{job.current_task}</span>
+                {job.current_repeat !== null && job.repeats > 1 && ` (repeat ${job.current_repeat})`}
+                {job.current_step != null && job.total_steps != null && ` · step ${job.current_step} of max ${job.total_steps}`}</>
+            : running ? "Preparing…" : `${job.completed_tasks} of ${job.total_tasks} run(s) executed`}
+        </p>
+        <ProgressBar percent={job.percent} label="progress" />
+        <div className="flex flex-wrap justify-between gap-2 text-sm">
+          <span className="text-muted" data-testid="counts">{job.completed_tasks} / {job.total_tasks} runs done</span>
+          <span className="tabular-nums" data-testid="requests">
+            {job.kind === "real"
+              ? `${job.llm_calls_used} / ${job.budget ?? "?"} requests used (retries included)`
+              : `${job.llm_calls_used} scripted call(s) - nothing sent to any model`}
+          </span>
+        </div>
+        <ol aria-label="progress lines" className="max-h-72 overflow-auto rounded-lg border border-border bg-surface-2 p-3 font-mono text-[13px] leading-6">
+          {job.progress.length === 0 && <li className="text-muted">No run finished yet - the first line appears when task 1 is done.</li>}
+          {job.progress.map((line, i) => <li key={i}>{line}</li>)}
+          {running && job.current_task && <li className="text-muted">{job.current_task} · working…</li>}
+        </ol>
+        {running && (
+          <p className="text-[13px] text-muted">
+            You can close this page: the run continues on the server. Find it again on the Overview page. If the API
+            stops, the unfinished run is lost (results are saved only when a run finishes).
+          </p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function Outcome({ job }: { job: Job }) {
   if (ACTIVE_JOB_STATES.includes(job.status)) return null;
   return (
-    <div className="space-y-2 text-sm">
+    <div className="flex flex-col gap-3 text-sm">
       {job.status === "incomplete" && (
-        <p className="rounded bg-amber-50 p-2 text-amber-900">
-          The run stopped early (for example the budget or the free-tier quota ran out). What finished is kept and
-          the run is marked INCOMPLETE - it is never counted as a full-suite score.
-        </p>
+        <Alert tone="warning" title="The run stopped early">
+          For example the budget or the free-tier quota ran out. What finished is kept and the run is marked
+          INCOMPLETE - it is never counted as a full-suite score.
+        </Alert>
       )}
-      {job.error && <p role="alert" className="rounded bg-red-50 p-2 text-red-800">Error: {job.error}</p>}
+      {job.error && <p role="alert" className="rounded-lg bg-danger-bg p-3 text-danger-fg">Error: {job.error}</p>}
+      {job.summary && (
+        <p data-testid="summary">Server summary: pass rate <strong>{String(job.summary.pass_rate)}</strong>, {String(job.summary.requests)} request(s).</p>
+      )}
       {job.saved === true && job.suite_id && (
-        <Link to={`/suites/${job.suite_id}`} className="inline-block rounded bg-slate-900 px-3 py-1 text-white">
+        <Link to={`/suites/${job.suite_id}`} className="inline-flex h-10 w-fit items-center rounded-lg bg-accent px-4 font-semibold text-on-accent hover:bg-accent/90">
           Open the results ({job.suite_id.slice(0, 8)})
         </Link>
       )}
       {job.saved === false && (
-        <div role="alert" className="rounded bg-red-50 p-2 text-red-800">
+        <div role="alert" className="rounded-lg bg-danger-bg p-3 text-danger-fg">
           <p className="font-semibold">The results could NOT be saved in the database.</p>
           {job.save_error && <p>{job.save_error}</p>}
           {job.recovery_path && <p>A copy was written to: <code>{job.recovery_path}</code></p>}
@@ -64,41 +144,33 @@ export function RunJobPage({ pollMs = 1000 }: { pollMs?: number }) {
     return () => { active = false; clearTimeout(timer); };      // leaving the page stops the polling
   }, [jobId, pollMs, attempt]);
 
-  if (state.status === "loading") return <p role="status">Loading…</p>;
+  // The browser tab shows the progress too, e.g. "(2/9) Running · AgentBench-Lite".
+  const job = state.status === "ready" ? state.job : null;
+  useEffect(() => {
+    if (job && ACTIVE_JOB_STATES.includes(job.status)) document.title = `(${job.completed_tasks}/${job.total_tasks}) Running · AgentBench-Lite`;
+  }, [job]);
+
+  if (state.status === "loading") return <Skeleton lines={5} label="Loading the run…" />;
   if (state.status === "error") {
-    return (
-      <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-        <p className="font-semibold">Could not load the job ({state.error.code})</p>
-        <p className="mt-1">{state.error.message}</p>
-        <button onClick={() => setAttempt((n) => n + 1)} className="mt-3 rounded bg-red-700 px-3 py-1 text-white">Try again</button>
-      </div>
-    );
+    return <ErrorState title="Could not load the job" code={state.error.code} message={state.error.message} onRetry={() => setAttempt((n) => n + 1)} />;
   }
-  const job = state.job;
+  const j = state.job;
+  const running = ACTIVE_JOB_STATES.includes(j.status);
   return (
-    <div className="space-y-4">
-      <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
-        Run job {job.job_id.slice(0, 8)} <StatusBadge status={job.status} /> <KindBadge kind={job.kind} />
-      </h2>
-      <Card title="Progress">
-        <p className="text-sm">
-          {job.agent} on {job.suite} · {job.tasks.length} task(s) × {job.repeats} repeat(s)
-          {job.budget !== null && ` · budget ${job.budget} requests`}
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <h1 className="flex flex-wrap items-center gap-3 text-title">
+          Run job <span className="font-mono">{j.job_id.slice(0, 8)}</span> <StatusBadge status={j.status} />
+        </h1>
+        <p className="text-muted">
+          {j.agent} on {j.suite} · {j.tasks.length} task(s) × {j.repeats} repeat(s)
+          {j.budget !== null && ` · budget ${j.budget} requests`}
         </p>
-        <div role="progressbar" aria-label="progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={job.percent}
-             className="mt-2 h-3 w-full rounded bg-slate-100">
-          <div className="h-3 rounded bg-sky-600" style={{ width: `${job.percent}%` }} />
-        </div>
-        <p data-testid="counts" className="mt-1 text-sm text-slate-600">
-          {job.completed_tasks} / {job.total_tasks} runs done
-          {job.current_task && ` · now: ${job.current_task}${job.current_repeat ? ` (repeat ${job.current_repeat})` : ""}`}
-        </p>
-        <ol aria-label="progress lines" className="mt-2 max-h-64 overflow-auto rounded bg-slate-50 p-2 font-mono text-xs">
-          {job.progress.map((line, i) => <li key={i}>{line}</li>)}
-        </ol>
-      </Card>
-      <Outcome job={job} />
-      <p className="text-xs text-slate-500">{job.note}</p>
+        <Stepper steps={RUN_STEPS} current={running ? 3 : 4} />
+      </div>
+      <Live job={j} />
+      <Outcome job={j} />
+      <p className="text-[13px] text-muted">{j.note}</p>
     </div>
   );
 }

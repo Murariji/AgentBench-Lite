@@ -206,3 +206,9 @@ python scripts/update_api_contract.py --write --reason "why it changes"       # 
 - added field SuiteSummaryOut.config_fingerprint (string)
 - added field SuiteSummaryOut.tools_fingerprint (null|string)
 - CHANGED required fields of SuiteSummaryOut: ['complete', 'config_name', 'failed', 'finished_at', 'infra_errors', 'kind', 'model', 'pass_rate', 'passed', 'provider', 'registration_status', 'repeats', 'scheduled_runs', 'scope', 'short_id', 'skipped', 'started_at', 'stop_reason', 'suite_id', 'suite_name', 'tasks_fingerprint', 'total_llm_calls'] -> ['complete', 'config_fingerprint', 'config_name', 'failed', 'finished_at', 'infra_errors', 'kind', 'model', 'pass_rate', 'passed', 'provider', 'registration_status', 'repeats', 'scheduled_runs', 'scope', 'short_id', 'skipped', 'started_at', 'stop_reason', 'suite_id', 'suite_name', 'tasks_fingerprint', 'tools_fingerprint', 'total_llm_calls']
+
+### 2026-11-13 — Redesign R4: JobOut gains live progress (current_step, total_steps, llm_calls_used incl. retries); additive, nullable, nothing removed
+
+- added field JobOut.current_step (integer|null)
+- added field JobOut.llm_calls_used (integer)
+- added field JobOut.total_steps (integer|null)
