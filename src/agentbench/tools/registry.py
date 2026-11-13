@@ -1,8 +1,9 @@
 """ToolRegistry: holds tools by name and executes them safely."""
 
+import copy
 from typing import Any
 
-from agentbench.models import ToolCall
+from agentbench.models import ToolCall, ToolSpec
 from agentbench.tools.base import Tool, ToolError
 
 
@@ -17,6 +18,10 @@ class ToolRegistry:
     def register(self, tool: Tool) -> None:
         if not getattr(tool, "name", ""):
             raise ValueError(f"{type(tool).__name__} has no 'name'")
+        version = getattr(tool, "version", None)
+        if type(version) is not int or version < 1:   # type() check: True/False are not versions
+            raise ValueError(f"tool {tool.name!r} needs an explicit version: a whole number >= 1 "
+                             f"(got {version!r})")
         if tool.name in self._tools:
             raise ValueError(f"a tool named {tool.name!r} is already registered")
         self._tools[tool.name] = tool
@@ -26,6 +31,12 @@ class ToolRegistry:
 
     def names(self) -> list[str]:
         return sorted(self._tools)
+
+    def specs(self) -> list[ToolSpec]:
+        """A snapshot of every registered tool (name, version, description, parameters), by name."""
+        return [ToolSpec(name=t.name, version=t.version, description=t.description,
+                         parameters=copy.deepcopy(t.parameters))
+                for t in (self._tools[n] for n in self.names())]
 
     def execute(self, tool_name: str, arguments: dict[str, Any] | None = None) -> ToolCall:
         """Run a tool and ALWAYS return a ToolCall — never raise.

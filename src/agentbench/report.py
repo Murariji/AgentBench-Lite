@@ -24,7 +24,44 @@ CONFIG_DIMENSIONS = {
     "system prompt (hash)": lambda s: s.config.prompt_hash,
     "max LLM attempts": lambda s: s.config.max_attempts,
     "request pacing (s)": lambda s: s.config.min_interval_seconds,
+    # Step A.1: tools are a configuration dimension (changed on purpose, e.g. a calculator fix).
+    # "not recorded" is NOT a value to compare: see _tools_status() - unknown is never "the same".
+    "tools (fingerprint)": lambda s: s.tools_fingerprint or "not recorded",
 }
+TOOLS_DIMENSION = "tools (fingerprint)"
+
+
+def tool_changes(before: list, after: list) -> list[str]:
+    """What differs between two tool snapshots, tool by tool (both must be recorded)."""
+    old, new = {t.name: t for t in before}, {t.name: t for t in after}
+    changes = []
+    for name in sorted(old.keys() | new.keys()):
+        a, b = old.get(name), new.get(name)
+        if a is None:
+            changes.append(f"{name} added (v{b.version})")
+        elif b is None:
+            changes.append(f"{name} removed (was v{a.version})")
+        elif a.version != b.version:
+            changes.append(f"{name} v{a.version} -> v{b.version}"
+                           + ("" if a.contract_fingerprint == b.contract_fingerprint else " (contract changed too)"))
+        elif a.contract_fingerprint != b.contract_fingerprint:
+            # Same declared version, different description/parameters: the model reads something else.
+            changes.append(f"{name} contract changed (description/parameters) with the SAME version v{a.version}")
+    return changes
+
+
+def _tools_status(suites: list[SuiteResult]) -> tuple[str, list[str]]:
+    """'same' | 'changed' | 'unknown', plus detail lines. Unknown is never assumed identical."""
+    unknown = [s.suite_id[:8] for s in suites if s.tools is None]
+    if unknown:
+        return "unknown", [f"WARNING: tools were not recorded for {', '.join(unknown)} (stored before tool "
+                           f"versions existed): tools are unknown, not assumed identical."]
+    if len({s.tools_fingerprint for s in suites}) == 1:
+        return "same", []
+    details = [f"Tools changed ({s.suite_id[:8]} vs {suites[0].suite_id[:8]}): "
+               + "; ".join(tool_changes(suites[0].tools, s.tools))
+               for s in suites[1:] if s.tools_fingerprint != suites[0].tools_fingerprint]
+    return "changed", details
 # Must be identical for the comparison to be fair at all.
 FAIRNESS_DIMENSIONS = {
     "tasks + grading (fingerprint)": lambda s: s.tasks_fingerprint,
@@ -64,6 +101,9 @@ def format_report(suite: SuiteResult, metrics: SuiteMetrics | None = None) -> st
         f"Config     : {c.name}  [provider {c.provider}, model {c.model}, prompt {c.prompt_hash}, "
         f"max attempts {c.max_attempts}]",
         f"Settings   : {_tools_summary(suite)}; dataset {suite.dataset or 'n/a'}",
+        "Tools      : " + (", ".join(f"{t.name} v{t.version}" for t in suite.tools)
+                           + f"  (fingerprint {suite.tools_fingerprint})" if suite.tools is not None
+                           else "not recorded (run stored before tool versions existed)"),
         "",
     ]
     if m.complete:
@@ -193,7 +233,12 @@ def compare(suites: list[SuiteResult]) -> str:
 
     # Honest conclusions about what the comparison can and cannot show.
     unfair = [label for label, get in FAIRNESS_DIMENSIONS.items() if len({str(get(s)) for s in suites}) > 1]
-    changed = [label for label, get in CONFIG_DIMENSIONS.items() if len({str(get(s)) for s in suites}) > 1]
+    changed = [label for label, get in CONFIG_DIMENSIONS.items()
+               if label != TOOLS_DIMENSION and len({str(get(s)) for s in suites}) > 1]
+    tools_status, tools_lines = _tools_status(suites)
+    if tools_status == "changed":
+        changed.append(TOOLS_DIMENSION)
+    lines += tools_lines
     if unfair:
         lines.append("NOT A FAIR COMPARISON: these differ between runs: " + ", ".join(unfair)
                      + ". Results are not comparable.")
@@ -204,10 +249,15 @@ def compare(suites: list[SuiteResult]) -> str:
         lines.append("Configuration: " + ("no dimension changed either; the difference is in how the runs "
                                           "were set up (above), so no conclusion about the agent is possible."
                                           if not changed else "also changed: " + ", ".join(changed) + "."))
+    elif not changed and tools_status == "unknown":
+        lines.append("No RECORDED configuration dimension changed, but the tools are unknown: this cannot be "
+                     "confirmed as run-to-run variation only.")
     elif not changed:
         lines.append("No configuration dimension changed: differences reflect run-to-run variation only.")
     elif len(changed) == 1:
-        lines.append(f"Changed dimension: {changed[0]} (the only configuration difference).")
+        lines.append(f"Changed dimension: {changed[0]} (the only "
+                     + ("RECORDED configuration difference; tools unknown)." if tools_status == "unknown"
+                        else "configuration difference)."))
     else:
         lines.append("WARNING: several dimensions changed (" + ", ".join(changed) + "); "
                      "differences cannot be attributed to any single one of them.")

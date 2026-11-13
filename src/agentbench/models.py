@@ -13,6 +13,7 @@ All models are Pydantic models, so they:
 """
 
 import hashlib
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -188,6 +189,35 @@ def is_infra_error(run: "RunResult") -> bool:
     return run.status == "error" and run.error_kind in INFRA_ERROR_KINDS
 
 
+def canonical_json(value: Any) -> str:
+    """ONE fixed text form: sorted keys, no extra spaces, real Unicode. Same data -> same text
+    on every machine, whatever order the keys were written in. That's what makes a hash stable."""
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+class ToolSpec(_BaseModel):
+    """A snapshot of one tool exactly as the agent was offered it (Step A.1)."""
+
+    name: str = Field(min_length=1)
+    version: int = Field(ge=1)               # declared behaviour version (see Tool.version)
+    description: str
+    parameters: dict[str, Any]               # the JSON schema the model sees
+
+    @property
+    def contract_fingerprint(self) -> str:
+        """sha256 of what the MODEL reads (name, description, parameters) - automatic, no version."""
+        contract = {"name": self.name, "description": self.description, "parameters": self.parameters}
+        return hashlib.sha256(canonical_json(contract).encode("utf-8")).hexdigest()[:12]
+
+
+def tools_fingerprint(specs: "list[ToolSpec] | None") -> str | None:
+    """sha256 of every tool's contract AND version, in name order. None = tools not recorded."""
+    if specs is None:
+        return None
+    data = [s.model_dump() for s in sorted(specs, key=lambda s: s.name)]
+    return hashlib.sha256(canonical_json(data).encode("utf-8")).hexdigest()[:12]
+
+
 class AgentConfig(_BaseModel):
     """One agent setup, described as data, so runs can be compared and reproduced."""
 
@@ -271,6 +301,9 @@ class SuiteResult(_BaseModel):
     request_budget: int | None = Field(default=None, ge=1)
     estimated_requests: int | None = Field(default=None, ge=0)
     stop_reason: str | None = None
+    # Step A.1: the tools the agent was offered. None = NOT RECORDED (runs from before A.1):
+    # unknown, never assumed to be the same as today's tools.
+    tools: list[ToolSpec] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -296,6 +329,10 @@ class SuiteResult(_BaseModel):
             return None
         text = "\n".join(t.model_dump_json() for t in self.tasks)
         return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+    @property
+    def tools_fingerprint(self) -> str | None:
+        return tools_fingerprint(self.tools)
 
     @property
     def scheduled_runs(self) -> int:

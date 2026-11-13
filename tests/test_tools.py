@@ -102,6 +102,7 @@ def test_execute_never_raises_records_error(registry, tool_name, arguments, erro
 def test_execute_catches_unexpected_bugs_in_tools():
     class Buggy(Tool):
         name = "buggy"
+        version = 1          # Step A.1: every registered tool declares its version
         description = "always crashes"
 
         def run(self) -> str:

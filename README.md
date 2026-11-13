@@ -114,7 +114,10 @@ python scripts/results.py import results/*.json     # store exported JSON (dupli
   [docs/architecture.md](docs/architecture.md#result-storage-phase-7).
 - **Transactions:** a whole suite is saved in one transaction, so a crash never leaves half a run.
 - **Parameterized SQL:** every value is sent as a `?` parameter, never pasted into SQL text.
-- **Schema version:** stored in `PRAGMA user_version` (now 2). Older databases are upgraded
+- **Tool versions:** every run stores the exact tools it offered (name, declared version,
+  description, parameters). Comparisons say "tools changed: calculator v1 -> v2", and runs stored
+  before this existed are "tools unknown", never assumed identical.
+- **Schema version:** stored in `PRAGMA user_version` (now 3). Older databases are upgraded
   automatically in one transaction (nothing changes if the upgrade fails); unknown versions are refused.
 - **Retries:** every retried LLM request is recorded (kind, status, wait, whether it finally
   worked). Runs from before this existed show retries as *not recorded*, never as zero.

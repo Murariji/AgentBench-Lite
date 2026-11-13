@@ -10,7 +10,8 @@ Tables (one-to-many, top to bottom):
                 ├─< run_records ─┬─< steps          (the trace; tool call columns are optional)
                 │                └─< checks         (the evaluation; none for infra errors)
                 │                └─< retries        (retried LLM requests; schema v2)
-                └─< skipped_runs                    (runs that never happened, with the reason)
+                ├─< skipped_runs                    (runs that never happened, with the reason)
+                └─< suite_tools >── tool_versions   (tool snapshots by content hash; schema v3)
 
 Rules: foreign keys ON for every connection, every value passed as a "?" parameter (never put
 into SQL text), and a schema version in PRAGMA user_version. This file is separate from
@@ -28,11 +29,12 @@ from pydantic import BaseModel
 
 from agentbench.metrics import Rate
 from agentbench.models import (AgentConfig, Check, EvaluationResult, RetryEvent, RunRecord, RunResult,
+                               ToolSpec, canonical_json,
                                SkippedRun, Step, SuiteResult, Task, ToolCall, Trace)
 from agentbench.report import RESULTS_DIR, export_json
 
 DEFAULT_RESULTS_DB = Path("data") / "results.db"  # git-ignored (*.db)
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Version 1 (Phase 7). Never edit it: databases in the wild were created with it.
 SCHEMA = """
@@ -155,10 +157,31 @@ MIGRATIONS: dict[int, str] = {
         PRIMARY KEY (run_id, position)
     );
     """,
+    2: """
+    -- Step A.1: which tool versions each suite run offered the agent.
+    -- 0 for every EXISTING suite: its tools were never recorded (unknown, NOT assumed identical).
+    ALTER TABLE suite_runs ADD COLUMN tools_recorded INTEGER NOT NULL DEFAULT 0
+        CHECK (tools_recorded IN (0, 1));
+    -- One row per DISTINCT tool spec (name + version + description + parameters), keyed by the
+    -- sha256 of its canonical JSON - stored once, however many suites used it.
+    CREATE TABLE tool_versions (
+        tool_hash TEXT PRIMARY KEY,
+        name      TEXT NOT NULL,
+        version   INTEGER NOT NULL CHECK (version >= 1),
+        spec_json TEXT NOT NULL
+    );
+    CREATE INDEX idx_tool_versions_name ON tool_versions (name);
+    CREATE TABLE suite_tools (
+        suite_id  TEXT NOT NULL REFERENCES suite_runs (suite_id),
+        position  INTEGER NOT NULL,
+        tool_hash TEXT NOT NULL REFERENCES tool_versions (tool_hash),
+        PRIMARY KEY (suite_id, position)
+    );
+    """,
 }
 
 TABLES = ("suite_runs", "task_versions", "suite_tasks", "run_records", "steps", "checks", "skipped_runs",
-          "retries")
+          "retries", "tool_versions", "suite_tools")
 
 
 class StorageError(Exception):
@@ -237,6 +260,10 @@ class SaveOutcome:
     suite_id: str
     error: str | None = None
     recovery_path: Path | None = None   # JSON copy written because the database save failed
+
+
+def tool_hash(spec: ToolSpec) -> str:
+    return hashlib.sha256(canonical_json(spec.model_dump()).encode("utf-8")).hexdigest()
 
 
 def task_hash(task: Task) -> str:
@@ -362,6 +389,17 @@ class ResultStore:
                 "INSERT INTO suite_tasks (suite_id, position, task_id, task_hash) VALUES (?, ?, ?, ?)",
                 (suite.suite_id, position, task_id, digest))
 
+        if suite.tools is not None:  # None = not recorded: leave tools_recorded = 0, write no rows
+            self._conn.execute("UPDATE suite_runs SET tools_recorded = 1 WHERE suite_id = ?", (suite.suite_id,))
+            for position, spec in enumerate(suite.tools):
+                digest = tool_hash(spec)
+                self._conn.execute(  # the same tool spec seen before -> already stored once
+                    "INSERT INTO tool_versions (tool_hash, name, version, spec_json) VALUES (?, ?, ?, ?)"
+                    " ON CONFLICT (tool_hash) DO NOTHING",
+                    (digest, spec.name, spec.version, canonical_json(spec.model_dump())))
+                self._conn.execute("INSERT INTO suite_tools (suite_id, position, tool_hash) VALUES (?, ?, ?)",
+                                   (suite.suite_id, position, digest))
+
     def _insert_record(self, suite_id: str, position: int, record: RunRecord) -> None:
         run, ev = record.run, record.evaluation
         self._conn.execute(
@@ -418,7 +456,11 @@ class ResultStore:
             started_at=row["started_at"], finished_at=row["finished_at"],
             records=records, skipped=skipped, tasks=tasks, dataset=row["dataset"],
             request_budget=row["request_budget"], estimated_requests=row["estimated_requests"],
-            stop_reason=row["stop_reason"])
+            stop_reason=row["stop_reason"],
+            tools=None if not row["tools_recorded"] else [   # 0 = not recorded: unknown, never []
+                ToolSpec.model_validate_json(r["spec_json"]) for r in self._conn.execute(
+                    "SELECT tv.spec_json FROM suite_tools st JOIN tool_versions tv ON tv.tool_hash = st.tool_hash"
+                    " WHERE st.suite_id = ? ORDER BY st.position", (suite_id,))])
 
     def resolve(self, prefix: str) -> str:
         """Full suite_id from its first characters (like a short git commit id)."""

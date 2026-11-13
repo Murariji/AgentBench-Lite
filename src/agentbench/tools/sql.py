@@ -179,6 +179,7 @@ class ReadOnlySQLite:
 
 class ListTablesTool(Tool):
     name = "list_tables"
+    version = 1
     description = "List the tables in the shop database. Use this first to explore the data."
     parameters = {"type": "object", "properties": {}}
 
@@ -191,6 +192,7 @@ class ListTablesTool(Tool):
 
 class DescribeTableTool(Tool):
     name = "describe_table"
+    version = 1
     description = "Show the columns and types of one table in the shop database."
     parameters = {
         "type": "object",
@@ -210,6 +212,7 @@ class DescribeTableTool(Tool):
 
 class SqlQueryTool(Tool):
     name = "sql_query"
+    version = 1
     description = (
         "Run ONE read-only SQLite SELECT query on the shop database and get the rows back. "
         "Dates are TEXT 'YYYY-MM-DD' (use strftime). At most 50 rows are returned, so "

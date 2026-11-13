@@ -100,7 +100,8 @@ def run_suite(
     suite = SuiteResult(suite_name=suite_name, config=config, task_ids=ids, repeats=repeats,
                         tasks=tasks, dataset=dataset, request_budget=request_budget,
                         # the estimate only means something for budgeted (real) runs
-                        estimated_requests=estimate.expected_requests if budget else None)
+                        estimated_requests=estimate.expected_requests if budget else None,
+                        tools=tools.specs())   # Step A.1: exactly which tool versions were offered
 
     scheduled = [(task, repeat) for task in tasks for repeat in range(repeats)]
 

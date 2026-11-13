@@ -97,6 +97,7 @@ suite_runs ─┬─< suite_tasks >── task_versions     one row per distinct
             ├─< run_records ─┬─< steps            trace; tool call = optional columns, args = JSON
             │                ├─< checks           evaluation; none for infrastructure errors
             │                └─< retries          retried LLM requests (schema v2)
+            └─< suite_tools >── tool_versions     tool snapshots by content hash (schema v3)
             └─< skipped_runs                      runs that never happened, with the reason
 ```
 
@@ -106,7 +107,9 @@ suite_runs ─┬─< suite_tasks >── task_versions     one row per distinct
   per distinct content. Editing a prompt or tolerance creates a new version; old runs keep theirs.
 - **Integrity:** foreign keys on every connection, primary/unique keys, CHECK rules, every value a `?`
   parameter, and a whole suite saved in one transaction (all or nothing).
-- **Schema version:** `PRAGMA user_version` (currently 2). Older files are upgraded by `MIGRATIONS`
+- **Tool versions (v3):** each suite links to the exact tool specs it offered (name, declared
+  version, description, parameters). Suites stored before v3 have `tools_recorded = 0`: unknown.
+- **Schema version:** `PRAGMA user_version` (currently 3). Older files are upgraded by `MIGRATIONS`
   (one step per version, all in one transaction, rolled back on failure). Newer versions, or tables
   without a version, are refused rather than misread. Runs stored before v2 have
   `retries_recorded = 0`: their retries are unknown, not zero.

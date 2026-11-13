@@ -15,6 +15,29 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Benchmark v2 — Step A.1 Tool versions in the fingerprint: ✅ complete** (tests: **411 passed** when run
+by Claude; 36 new — user to confirm). Next: A.3 (calculator fix + measurement), waiting for approval.
+Order agreed with the user: A.1 → A.3 → A.2 → A.4 (few real runs, gradually) → Phase 9 → Phase 10.
+- Versioning convention: `Tool.version` = whole number >= 1, NO default; `ToolRegistry.register()`
+  refuses a missing/invalid version. All 6 tools are version 1 (unchanged since Phase 2/5).
+- `ToolSpec(name, version, description, parameters)`, `contract_fingerprint` = sha256 of canonical JSON
+  (`canonical_json`: sorted keys, no spaces) of name + description + parameters; `tools_fingerprint()`
+  over all specs incl. versions, in name order. `ToolRegistry.specs()`.
+- `SuiteResult.tools` (None = not recorded) + `tools_fingerprint`; `run_suite` records the registry's specs.
+- Comparison: tools = configuration dimension; same → nothing, changed → "Changed dimension: tools" +
+  `tool_changes()` ("calculator v1 -> v2", added/removed, "contract changed … with the SAME version"),
+  unknown → warning, never "run-to-run variation only". Report: `Tools :` line or "not recorded".
+- Storage schema **v3** (`MIGRATIONS[2]`): `suite_runs.tools_recorded` (DEFAULT 0 = unknown),
+  `tool_versions` (by hash), `suite_tools`. Genuine v2 fixture (`tests/fixtures/results_v2.sql`, written by
+  the Phase 8 code, incl. a recorded retry) + the v1 fixture: both upgrade with every suite identical and
+  `tools = None`; failed migration rolls back to v2; fresh = upgraded schema.
+- Tripwires: pinned contract fingerprints (calculator b6ed49cab787, describe_table 95015d83cc59,
+  list_tables d438d6e99a62, sql_query caad37852689; shop tools 2191990ea327) and 7 calculator-v1
+  behaviours (cover known cases only).
+- Two Step 8.1 tests had hard-coded "version 2 is newest"; made version-independent.
+- Trial on a COPY of the user's results.db: v2 → v3, both Gemini runs intact with tools "not recorded".
+- Notes: `docs/learning/benchmark-v2-notes.md`.
+
 **Phase 8 — Failure analysis: ✅ complete** (Steps 8.1, 8.2, 8.3). Tests: **375 passed** when run by
 Claude (9 new in 8.3 — user to confirm).
 
@@ -381,6 +404,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Decision for the user: a short "benchmark v2" step (harder tasks, tools version in the fingerprint, calculator `round()`; one real run) before Phase 9 — recommended so the dashboard shows real failures — or go straight to Phase 9 (FastAPI). Waiting for user approval.
+Benchmark v2, Step A.3 — calculator accepts a small safe set of functions (version 2, new pins), then measure the effect on shop-010 (steps, tool errors) with the fairness check showing "tools v1 -> v2". Plan first; waiting for user approval.
 Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
 estimate 6 requests per run.

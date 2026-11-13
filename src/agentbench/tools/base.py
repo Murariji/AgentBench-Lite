@@ -20,6 +20,11 @@ class Tool(ABC):
 
     name: ClassVar[str]          # unique id the LLM uses, e.g. "calculator"
     description: ClassVar[str]   # tells the LLM WHEN to use this tool
+    # Behaviour version: a positive whole number, starting at 1. Raise it by 1 whenever what the
+    # tool DOES changes (e.g. the calculator starts accepting round()). There is deliberately NO
+    # default: ToolRegistry refuses a tool without an explicit version. The contract (name,
+    # description, parameters) is fingerprinted automatically - see agentbench.models.ToolSpec.
+    version: ClassVar[int]
     # JSON-Schema description of the arguments. LLM providers (Phase 3)
     # use this format to know what arguments to send.
     parameters: ClassVar[dict[str, Any]] = {"type": "object", "properties": {}}

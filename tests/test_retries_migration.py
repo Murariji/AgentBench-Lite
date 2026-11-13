@@ -141,9 +141,10 @@ def test_migration_keeps_every_stored_run(tmp_path):
             assert loaded == expected                                # identical after migration
             assert all(r.run.retries is None for r in loaded.records)   # unknown, NOT zero
         assert [s.passed for s in store.list_suites()] == [2, 6, 10]   # newest first: stopped, sloppy, careful
-    assert version(path) == SCHEMA_VERSION == 2
+    assert version(path) == SCHEMA_VERSION                           # upgraded to the newest version
     after = counts(path)
-    assert after.pop("retries") == 0 and after == before             # nothing added or lost
+    new_tables = {t: after.pop(t) for t in set(after) - set(before)}  # retries (v2), tool tables (v3)
+    assert set(new_tables.values()) == {0} and after == before       # nothing added or lost
 
 
 def test_migrated_database_accepts_new_runs(tmp_path):
@@ -182,6 +183,6 @@ def test_failed_migration_rolls_back_completely(tmp_path, monkeypatch):
 def test_newer_version_is_refused(tmp_path):
     path = tmp_path / "future.db"
     with sqlite3.connect(path) as conn:
-        conn.execute("PRAGMA user_version = 3")
-    with pytest.raises(storage.SchemaVersionError, match="up to version 2"):
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")   # always "one newer than this code"
+    with pytest.raises(storage.SchemaVersionError, match=f"up to version {SCHEMA_VERSION}"):
         ResultStore(path)

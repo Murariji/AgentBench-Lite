@@ -26,6 +26,7 @@ class CalculatorTool(Tool):
     """
 
     name = "calculator"
+    version = 1
     description = "Evaluate an arithmetic expression, e.g. '(2 + 3) * 4'. Supports + - * / // % **."
     parameters = {
         "type": "object",
@@ -64,6 +65,7 @@ class WordCountTool(Tool):
     """Counts words in a piece of text."""
 
     name = "word_count"
+    version = 1
     description = "Count the number of words in a text."
     parameters = {
         "type": "object",
@@ -79,6 +81,7 @@ class LookupTool(Tool):
     """Looks up a fact in a small in-memory table (a stand-in for search/database tools)."""
 
     name = "lookup"
+    version = 1
     description = "Look up a fact by key, e.g. 'capital of france'. Case-insensitive."
     parameters = {
         "type": "object",
