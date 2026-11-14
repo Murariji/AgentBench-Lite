@@ -125,8 +125,6 @@ def main() -> None:
             docker("build", "-t", IMAGE, str(ROOT))
 
         print("\n2. Image contents")
-        user = docker("run", "--rm", "--entrypoint", "whoami", IMAGE).stdout.strip()
-        check(user == "agentbench", "runs as a normal user, not root", user)
         found = docker("run", "--rm", "--entrypoint", "sh", IMAGE, "-c",
                        "find / \\( -name '.env' -o -name '.env.*' -o -name '*.db' \\) -not -path '/proc/*' "
                        "2>/dev/null; true").stdout.split()
@@ -154,6 +152,8 @@ def main() -> None:
         seen.append(body)
         health = json.loads(body)
         check(health.get("real_runs_enabled") is False, "real Gemini runs are OFF by default")
+        server_uid = docker("exec", names[0], "sh", "-c", "awk '/^Uid:/{print $2}' /proc/1/status").stdout.strip()
+        check(server_uid not in ("", "0"), "the server process does not run as root", f"uid {server_uid}")
         published = docker("port", names[0], "8000").stdout.strip()
         check(published.startswith("127.0.0.1:"), "port published on 127.0.0.1 only", published)
 

@@ -32,12 +32,12 @@ RUN pip install ".[api,gemini]" && rm -rf src build
 
 COPY scripts ./scripts
 
-# Run as an ordinary user, not root: if anything ever went wrong inside the server, it could not change
-# the system files of the container. data/ and results/ are the only folders it may write to.
+# The server never runs as root: if anything ever went wrong inside it, it could not change the system
+# files of the container. scripts/docker-entrypoint.sh starts as root only to pick the user: the OWNER of
+# your shared data/ folder (Linux), else this agentbench user (Docker Desktop). Then it hands over.
 RUN useradd --create-home --uid 10001 agentbench \
     && mkdir -p /app/data /app/results \
     && chown agentbench:agentbench /app/data /app/results
-USER agentbench
 
 # Where results live. Mount your own folders here, or they disappear with the container.
 VOLUME ["/app/data", "/app/results"]
@@ -53,5 +53,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 # ENTRYPOINT = the fixed part; CMD = default extra options you can replace at `docker run`. Real runs are
 # OFF unless you add --allow-real-runs yourself, e.g.  docker run ... agentbench-api --allow-real-runs
-ENTRYPOINT ["python", "scripts/serve_api.py", "--container"]
+# (`sh script` instead of running the file directly: it works even if the execute bit was lost on Windows.)
+ENTRYPOINT ["sh", "scripts/docker-entrypoint.sh", "--container"]
 CMD []

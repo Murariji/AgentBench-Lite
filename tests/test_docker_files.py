@@ -74,15 +74,37 @@ def test_dockerfile_uses_python_312_and_never_copies_everything():
     assert copies and not any(line.split()[1] == "." for line in copies), "no `COPY . .`: copy named paths only"
 
 
-def test_dockerfile_has_no_secrets_and_runs_as_a_normal_user():
+def test_dockerfile_has_no_secrets():
     instructions = [line for line in DOCKERFILE.splitlines() if not line.lstrip().startswith("#")]
     assert not any("GEMINI_API_KEY" in line or ".env" in line for line in instructions)
-    assert any(line.startswith("USER ") and "root" not in line for line in instructions)
+
+
+ENTRYPOINT_SCRIPT = (ROOT / "scripts" / "docker-entrypoint.sh").read_bytes()
+
+
+def test_entrypoint_always_hands_over_to_a_normal_user():
+    """Root is used only to choose the user; every way of starting the server drops root first."""
+    text = ENTRYPOINT_SCRIPT.decode("utf-8")
+    starts = [line.strip() for line in text.splitlines() if line.strip().startswith("exec")]
+    assert len(starts) == 2
+    assert starts[1].startswith('exec setpriv --reuid="$run_uid" --regid="$run_gid" --clear-groups')
+    assert 'if [ "$(id -u)" != "0" ]' in text      # the other start is only for an already non-root user
+    assert "DEFAULT_UID=10001" in text
+
+
+def test_entrypoint_never_takes_over_a_folder_that_holds_files():
+    text = ENTRYPOINT_SCRIPT.decode("utf-8")
+    assert 'if [ -z "$(ls -A "$dir")" ]; then' in text and "chown -R" not in text
+
+
+def test_entrypoint_keeps_unix_line_endings():
+    assert b"\r" not in ENTRYPOINT_SCRIPT, "CRLF breaks sh inside the container"
+    assert "*.sh text eol=lf" in (ROOT / ".gitattributes").read_text(encoding="utf-8")
 
 
 def test_dockerfile_starts_the_server_in_container_mode_with_real_runs_off():
     entry = next(line for line in DOCKERFILE.splitlines() if line.startswith("ENTRYPOINT"))
-    assert '"scripts/serve_api.py"' in entry and '"--container"' in entry
+    assert '"scripts/docker-entrypoint.sh"' in entry and '"--container"' in entry
     assert "--allow-real-runs" not in entry
     assert next(line for line in DOCKERFILE.splitlines() if line.startswith("CMD")) == "CMD []"
 
