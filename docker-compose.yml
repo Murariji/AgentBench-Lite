@@ -1,0 +1,36 @@
+# AgentBench-Lite: API + dashboard with one command (Phase 11.2).
+#
+#     docker compose up --build        # then open http://localhost:5173   (Ctrl+C to stop)
+#     docker compose down              # remove the containers (your data/ folder stays)
+#
+# Scripted runs only. For REAL Gemini runs add the opt-in file (it reads your .env at run time):
+#     docker compose -f docker-compose.yml -f docker-compose.real.yml up --build
+#
+# Both ports are published on 127.0.0.1 only: nothing on your network can reach them (there is no login).
+
+name: agentbench
+
+services:
+  api:
+    build: .
+    image: agentbench-api
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Your results stay on YOUR disk. AGENTBENCH_DATA lets a test point at a different folder.
+      - "${AGENTBENCH_DATA:-./data}:/app/data"
+      - "${AGENTBENCH_RESULTS:-./results}:/app/results"
+    security_opt:
+      - "no-new-privileges:true"     # a process inside can never gain more rights than it started with
+
+  dashboard:
+    build: ./dashboard
+    image: agentbench-dashboard
+    ports:
+      # 5173 on purpose: http://localhost:5173 is one of the two origins the API allows (CORS).
+      - "127.0.0.1:5173:8080"
+    depends_on:
+      api:
+        condition: service_healthy   # start only after the API's health check passes
+    security_opt:
+      - "no-new-privileges:true"

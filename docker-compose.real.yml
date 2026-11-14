@@ -1,0 +1,13 @@
+# OPT-IN: permit REAL Gemini runs (uses your free quota). Only ever used together with docker-compose.yml:
+#
+#     docker compose -f docker-compose.yml -f docker-compose.real.yml up --build
+#
+# Adds two things to the api service, nothing else:
+#   * your .env (GEMINI_API_KEY, GEMINI_MODEL) - read when the container STARTS, never copied into the image
+#   * --allow-real-runs - each run still needs confirm=true, a budget within the maximum (100) and a
+#     passing registration guard, exactly as without Docker.
+
+services:
+  api:
+    env_file: .env
+    command: ["--allow-real-runs", "--max-real-budget", "100"]
