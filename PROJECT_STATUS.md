@@ -1,6 +1,6 @@
 # AgentBench-Lite — Project Status
 
-_Last updated: 2026-11-13_
+_Last updated: 2026-11-14_
 
 ## Goal
 An **AI Agent Evaluation & Reliability Platform** with three layers:
@@ -15,6 +15,16 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 10 — React dashboard: ✅ complete** (10.1–10.4, redesign R1–R6, README screenshots). Phase 11 (Docker)
+waits for plan approval.
+
+**A.4 Stage 2 (full real shop-hard run): ✅ done — three times.** `e601af16`, `b36e1e4a`, `d8e976c8`
+(2026-11-13): each 9 tasks x 1 repeat, COMPLETE, registration `shop-hard v1 matches`, identical config /
+tools / tasks / dataset fingerprints (`compare` reports no configuration change). All 9/9 (100%); 62, 63, 65
+requests (estimate 45, budget 100); avg 6.9–7.2 steps. Finding: shop-hard does NOT separate this model either —
+gemini-3.5-flash-lite passes 27/27 runs. Near misses in `d8e976c8`: near_step_limit x3, unfixed_tool_errors x1.
+Next lever for a discriminating benchmark: harder tasks or a second free model (not pass^k on 100% suites).
+
 **Phase 10 — React dashboard: 🔶 in progress. Steps 10.1 ✅ and 10.2 ✅** (dashboard: 20 tests passed, type
 check clean, build OK; Python: 701 passed — when run by Claude; user to confirm). Step 10.3 (failures,
 compare, task history + charts) waits for approval AND the subset decision (A or B) for the chart.
@@ -726,16 +736,13 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 - [x] **Phase 7** — Storage: SQLite for runs & traces (adds `run_id`)
 - [x] **Phase 8** — Failure analysis: categorize failures
 - [x] **Phase 9** — FastAPI backend: REST API over the framework and database
-- [ ] **Phase 10** — Dashboard: React + TypeScript + Tailwind + Recharts
+- [x] **Phase 10** — Dashboard: React + TypeScript + Tailwind + Recharts
 - [ ] **Phase 11** — Docker: package backend (and dashboard) for one-command start
 
 Planned model additions (added only in their phase): token counts on `Step` (Phase 3),
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-User review of the redesigned dashboard (both themes). Then: README screenshots, Phase 11 (Docker), and the
-improvements noted earlier (a harder suite or a second free model: every real run so far scores 100%).
-Recommended real run (user starts it): `python scripts/serve_api.py --allow-real-runs`, then shop-hard from
-the Start-a-run page (A.4 Stage 2, budget 100). Then 10.5 polish (lazy-load charts, screenshots). In parallel: A.4 Stage 2.
-Candidates noted earlier: record retried errors in traces, calculator `round()`, harder tasks,
-estimate 6 requests per run.
+Phase 11 (Docker) plan → user approval → build. A.4 Stage 2 is done (see Current state).
+Open improvements: a harder suite or a second free model (every real run so far scores 100%), record retried
+errors in traces, estimate ~7 requests per hard task (estimate 45 vs 62–65 actual).
