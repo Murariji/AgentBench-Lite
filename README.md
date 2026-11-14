@@ -5,7 +5,7 @@ record every step, measure performance, analyze why they fail, and view it all i
 
 > **Status:** the framework (agent loop, Gemini + FakeLLM, SQL tools, evaluators, benchmark runner,
 > metrics, comparison), SQLite storage, failure analysis, the local API and the dashboard are implemented.
-> The API also runs in Docker (the dashboard + `docker compose` are next). Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
+> Everything also runs in Docker with one command (`docker compose up`). Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
 
 ![Overview page of the AgentBench-Lite dashboard in dark mode, showing real stored benchmark runs](docs/screenshots/overview-dark.png)
 
@@ -265,18 +265,21 @@ Full reference: **[docs/api.md](docs/api.md)** — endpoints, error codes, job s
 CORS (only the React dev origins `http://localhost:5173` / `http://127.0.0.1:5173`, never `*`), the 64 KB
 request limit, and the pinned API contract that the dashboard relies on.
 
-## Run the API in Docker
+## Run it with Docker (API + dashboard)
 
-No Python needed, only Docker Desktop. Your results stay in your own `data/` folder.
+No Python or Node needed, only Docker Desktop:
 
 ```powershell
-docker build -t agentbench-api .
-docker run --rm -p 127.0.0.1:8000:8000 -v "${PWD}/data:/app/data" -v "${PWD}/results:/app/results" agentbench-api
+git clone https://github.com/Murariji/AgentBench-Lite.git
+cd AgentBench-Lite
+docker compose up --build
 ```
 
-Open http://127.0.0.1:8000/docs. Real runs stay off unless you add `--env-file .env` and `--allow-real-runs`;
-the key is given at run time and is never in the image. `python scripts/docker_check_api.py` proves it all
-(30 checks, scripted runs only). Details, safety notes and limitations: **[docs/docker.md](docs/docker.md)**.
+Open **http://localhost:5173**. Scripted runs only by default. For real Gemini runs, put your key in `.env` and add
+the opt-in file: `docker compose -f docker-compose.yml -f docker-compose.real.yml up --build`. The key is read at
+start and is never in an image. Ports are published on 127.0.0.1 only, the server never runs as root, and your
+results stay in your own `data/` folder. Details and limitations: **[docs/docker.md](docs/docker.md)**.
+All commands in one place: **[docs/commands.md](docs/commands.md)**.
 
 ## Dashboard
 
@@ -322,7 +325,7 @@ separate this model's performance (see [Evaluation limitations](#evaluation-limi
 - FastAPI + Uvicorn (optional `api` extra) for the local read-only API; httpx for its tests
 - React 18 + TypeScript 5 + Vite 5 + Tailwind CSS 3 (dashboard), Vitest + Testing Library
 - Recharts (charts), React Router (pages)
-- Docker (API image: Python 3.12 slim, non-root user); `docker compose` for API + dashboard is planned
+- Docker + docker compose (API: Python 3.12 slim; dashboard: nginx, unprivileged)
 
 ## Getting started
 

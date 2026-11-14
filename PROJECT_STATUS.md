@@ -15,9 +15,24 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
-**Phase 11 — Docker: 🔶 in progress. Step 11.1 API image ✅ complete** (Python: 740 passed, 15 new;
+**Step 11.2 Dashboard image + docker compose: ✅ complete** (Python: 743 passed; `docker_check_api.py` 30/30;
+compose stack checked in headless Edge with a copy of the real results — when run by Claude; user to confirm).
+- `dashboard/Dockerfile` (node:20-alpine builds with `npm ci` + `npm run build`; nginxinc/nginx-unprivileged:1.27-alpine
+  serves `dist/`, uid 101, port 8080; 75 MB), `dashboard/nginx.conf` (SPA fallback, `/assets/` real 404s + long cache,
+  index.html no-cache, nosniff / DENY / no-referrer), `dashboard/.dockerignore` (allow-list).
+- `docker-compose.yml`: api `127.0.0.1:8000`, dashboard `127.0.0.1:5173` (a CORS-allowed origin), dashboard waits
+  for API `service_healthy`, `no-new-privileges`, data via `${AGENTBENCH_DATA:-./data}`. `docker-compose.real.yml`
+  (opt-in): `env_file: .env` + `--allow-real-runs --max-real-budget 100`.
+- Fix found while writing the command list: on Linux a shared `data/` owned by uid 1000 was not writable for the
+  image user 10001 (Docker Desktop hides this). `scripts/docker-entrypoint.sh` starts as root only to choose the
+  user (folder owner, else 10001; takes over only an EMPTY root-owned folder; refuses a non-empty one) and hands
+  over with `setpriv`. Simulated with Docker volumes (1000 / empty root / non-empty root). `.gitattributes` keeps
+  `*.sh` LF (core.autocrlf=true would break `sh`).
+- Docs: `docs/docker.md` (rewritten for compose), `docs/commands.md` (all commands), phase-11 notes, README.
+
+**Phase 11 — Docker: ✅ complete (11.1, 11.2).** Step 11.1 API image ✅ (Python: 740 passed, 15 new;
 `scripts/docker_check_api.py`: 34/30 checks passed against a real container — when run by Claude; user to
-confirm). 11.2 (dashboard image + docker compose) waits for review/approval.
+confirm).
 - `Dockerfile` (python:3.12-slim, normal `pip install ".[api,gemini]"`, src/ removed after install, non-root
   user `agentbench` uid 10001, VOLUME /app/data + /app/results, HEALTHCHECK on /health,
   `ENTRYPOINT serve_api.py --container`, `CMD []` so `--allow-real-runs` must be added explicitly). Image 264 MB.
@@ -757,12 +772,12 @@ Real Gemini round trip verified with `gemini-3.5-flash-lite`: model requested
 - [x] **Phase 8** — Failure analysis: categorize failures
 - [x] **Phase 9** — FastAPI backend: REST API over the framework and database
 - [x] **Phase 10** — Dashboard: React + TypeScript + Tailwind + Recharts
-- [ ] **Phase 11** — Docker: package backend (and dashboard) for one-command start
+- [x] **Phase 11** — Docker: package backend (and dashboard) for one-command start
 
 Planned model additions (added only in their phase): token counts on `Step` (Phase 3),
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-User review of Step 11.1 → then 11.2 (dashboard image + docker compose). A.4 Stage 2 is done (see Current state).
+Finish: README pass (portfolio-ready) and resume bullets written from it. A.4 Stage 2 is done (see Current state).
 Open improvements: a harder suite or a second free model (every real run so far scores 100%), record retried
 errors in traces, estimate ~7 requests per hard task (estimate 45 vs 62–65 actual).
