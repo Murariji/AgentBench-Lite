@@ -1,0 +1,19 @@
+# .dockerignore for the dashboard image (Phase 11.2). Allow-list, like the API's: ignore everything, then
+# allow back only what `npm ci` + `npm run build` + nginx need.
+*
+!package.json
+!package-lock.json
+!index.html
+!tsconfig.json
+!vite.config.ts
+!tailwind.config.js
+!postcss.config.js
+!nginx.conf
+!src/
+!scripts/
+
+# Never: installed packages, build output, local settings or secrets
+**/node_modules
+**/dist
+**/.env
+**/.env.*
