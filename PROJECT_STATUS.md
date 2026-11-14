@@ -15,6 +15,26 @@ Backend first; the dashboard comes after the API is stable. Each technology is a
 when its phase begins.
 
 ## Current state
+**Phase 11 — Docker: 🔶 in progress. Step 11.1 API image ✅ complete** (Python: 740 passed, 15 new;
+`scripts/docker_check_api.py`: 34/30 checks passed against a real container — when run by Claude; user to
+confirm). 11.2 (dashboard image + docker compose) waits for review/approval.
+- `Dockerfile` (python:3.12-slim, normal `pip install ".[api,gemini]"`, src/ removed after install, non-root
+  user `agentbench` uid 10001, VOLUME /app/data + /app/results, HEALTHCHECK on /health,
+  `ENTRYPOINT serve_api.py --container`, `CMD []` so `--allow-real-runs` must be added explicitly). Image 264 MB.
+- `.dockerignore` is an allow-list (`*`, then only pyproject.toml, README.md, LICENSE, src/, scripts/; plus
+  `**/.env*`, `**/*.db`, caches excluded inside them).
+- `--container` (`agentbench.api.app.listen_host`): 0.0.0.0 only when the flag is given AND /.dockerenv or
+  /run/.containerenv exists; otherwise refused. Without the flag: 127.0.0.1 as before. Publish with
+  `-p 127.0.0.1:8000:8000`.
+- Hidden bug fixed: `[tool.setuptools.package-data]` now lists `api/contract.json` and
+  `suites/registrations/*.json` (a normal install dropped them; the editable install had hidden it). Test
+  guards every future data file.
+- Finding: shop.db byte fingerprint depends on the SQLite version in the file header (Windows 3.45.3 →
+  `62143ef0c309`, container 3.46.1 → `e7562005540f`; identical `iterdump()` hash `1031b73af95c`). A
+  container-built shop.db makes the registration guard refuse real runs (correct). Workaround: mount `data/`.
+  Possible future fix: content-based dataset fingerprint (changes every stored fingerprint → decision needed).
+- Docs: `docs/docker.md`, `docs/learning/phase-11-notes.md`, README "Run the API in Docker".
+
 **Phase 10 — React dashboard: ✅ complete** (10.1–10.4, redesign R1–R6, README screenshots). Phase 11 (Docker)
 waits for plan approval.
 
@@ -743,6 +763,6 @@ Planned model additions (added only in their phase): token counts on `Step` (Pha
 `AgentConfig` (Phase 6), `run_id` (Phase 7).
 
 ## Next step
-Phase 11 (Docker) plan → user approval → build. A.4 Stage 2 is done (see Current state).
+User review of Step 11.1 → then 11.2 (dashboard image + docker compose). A.4 Stage 2 is done (see Current state).
 Open improvements: a harder suite or a second free model (every real run so far scores 100%), record retried
 errors in traces, estimate ~7 requests per hard task (estimate 45 vs 62–65 actual).

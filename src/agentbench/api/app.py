@@ -70,6 +70,33 @@ def validate_origins(origins) -> list[str]:
     return result
 
 
+# ---------- where the server listens (Phase 11.1, Docker) -------------------------------------------------
+# Normally 127.0.0.1: only this computer. Inside a container, 127.0.0.1 is the CONTAINER's own loopback, so
+# Docker's port publishing cannot reach it; the server must listen on 0.0.0.0 there. The protection then moves
+# to the port mapping on the host (`-p 127.0.0.1:8000:8000`), which still publishes on this computer only.
+LOCAL_HOST = "127.0.0.1"
+CONTAINER_HOST = "0.0.0.0"
+# Files container engines create at the root of every container: Docker (/.dockerenv), Podman (/run/.containerenv).
+CONTAINER_MARKERS = ("/.dockerenv", "/run/.containerenv")
+
+
+def running_in_container(markers=CONTAINER_MARKERS) -> bool:
+    return any(FilePath(marker).exists() for marker in markers)
+
+
+def listen_host(container: bool, *, in_container: bool | None = None) -> str:
+    """127.0.0.1 unless --container was given AND we really are inside a container (else ValueError)."""
+    if not container:
+        return LOCAL_HOST
+    if in_container is None:
+        in_container = running_in_container()
+    if not in_container:
+        raise ValueError("--container is only for running inside a Docker container (no /.dockerenv or "
+                         "/run/.containerenv found). On this computer, start the server without it: it then "
+                         "listens on 127.0.0.1 only.")
+    return CONTAINER_HOST
+
+
 def check_startup(db_path) -> str | None:
     """Can the results database be opened (and, if needed, upgraded)? None = yes, else a clear message."""
     try:

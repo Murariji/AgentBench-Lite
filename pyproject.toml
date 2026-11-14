@@ -47,6 +47,12 @@ gemini = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# Non-Python files that are part of the package. An editable install (-e) reads them straight from src/,
+# but a normal install - like the one in the Docker image (Phase 11.1) - only copies what is listed here.
+# Without this, the API contract and the suite registrations would be silently missing.
+[tool.setuptools.package-data]
+agentbench = ["api/contract.json", "suites/registrations/*.json"]
+
 # Single source of truth for the version: agentbench/__init__.py
 [tool.setuptools.dynamic]
 version = { attr = "agentbench.__version__" }

@@ -1,0 +1,25 @@
+# .dockerignore - what Docker may NOT send into an image build (Phase 11.1).
+#
+# "Allow-list" style: first ignore EVERYTHING, then let back in only what the API image needs.
+# A new file (a secret, a database, a big folder) is therefore left out automatically, instead of
+# leaking in because someone forgot to add it here. tests/test_docker_files.py checks these rules.
+
+# 1. Ignore everything ...
+*
+
+# 2. ... then allow only what is needed to install and start the API
+!pyproject.toml
+!README.md
+!LICENSE
+!src/
+!scripts/
+
+# 3. Never, even inside the allowed folders: bytecode, caches, databases, secrets
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/.env
+**/.env.*

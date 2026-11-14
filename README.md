@@ -5,7 +5,7 @@ record every step, measure performance, analyze why they fail, and view it all i
 
 > **Status:** the framework (agent loop, Gemini + FakeLLM, SQL tools, evaluators, benchmark runner,
 > metrics, comparison), SQLite storage, failure analysis, the local API and the dashboard are implemented.
-> Docker packaging is next. Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
+> The API also runs in Docker (the dashboard + `docker compose` are next). Sections below are marked ✅ **Implemented** or 🗓️ **Planned**.
 
 ![Overview page of the AgentBench-Lite dashboard in dark mode, showing real stored benchmark runs](docs/screenshots/overview-dark.png)
 
@@ -265,6 +265,19 @@ Full reference: **[docs/api.md](docs/api.md)** — endpoints, error codes, job s
 CORS (only the React dev origins `http://localhost:5173` / `http://127.0.0.1:5173`, never `*`), the 64 KB
 request limit, and the pinned API contract that the dashboard relies on.
 
+## Run the API in Docker
+
+No Python needed, only Docker Desktop. Your results stay in your own `data/` folder.
+
+```powershell
+docker build -t agentbench-api .
+docker run --rm -p 127.0.0.1:8000:8000 -v "${PWD}/data:/app/data" -v "${PWD}/results:/app/results" agentbench-api
+```
+
+Open http://127.0.0.1:8000/docs. Real runs stay off unless you add `--env-file .env` and `--allow-real-runs`;
+the key is given at run time and is never in the image. `python scripts/docker_check_api.py` proves it all
+(30 checks, scripted runs only). Details, safety notes and limitations: **[docs/docker.md](docs/docker.md)**.
+
 ## Dashboard
 
 ```powershell
@@ -308,7 +321,8 @@ separate this model's performance (see [Evaluation limitations](#evaluation-limi
 - SQLite (built-in `sqlite3`) for stored results, `data/results.db`
 - FastAPI + Uvicorn (optional `api` extra) for the local read-only API; httpx for its tests
 - React 18 + TypeScript 5 + Vite 5 + Tailwind CSS 3 (dashboard), Vitest + Testing Library
-- Planned: Recharts (charts), React Router (pages), Docker
+- Recharts (charts), React Router (pages)
+- Docker (API image: Python 3.12 slim, non-root user); `docker compose` for API + dashboard is planned
 
 ## Getting started
 
